@@ -203,7 +203,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const visuals = getStatusVisuals();
 
   return (
-    <div className="p-6 pt-safe space-y-6 pb-24 max-w-lg mx-auto relative z-10">
+    <div className="p-6 space-y-6 pb-24 max-w-lg mx-auto relative z-10">
       <header className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">

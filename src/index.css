@@ -34,5 +34,5 @@ textarea {
 }
 
 .bottom-safe-nav {
-  bottom: calc(4rem + env(safe-area-inset-bottom));
+  bottom: calc(6rem + env(safe-area-inset-bottom));
 }

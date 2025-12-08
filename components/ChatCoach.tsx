@@ -147,7 +147,7 @@ export const ChatCoach: React.FC<ChatCoachProps> = ({ profile }) => {
         )}
       </div>
 
-      <div className="fixed bottom-safe-nav left-0 right-0 p-4 max-w-lg mx-auto z-40">
+      <div className="fixed bottom-safe-nav left-0 right-0 p-4 max-w-lg mx-auto z-50">
         <div className="glass rounded-full p-2 pr-2 pl-6 flex gap-3 shadow-xl shadow-slate-200/50 border border-white">
           <input
             type="text"
