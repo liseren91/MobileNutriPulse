@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { ViewState, UserProfile, Meal, Ingredient } from './types';
-import { Onboarding } from './components/Onboarding';
-import { Dashboard } from './components/Dashboard';
-import { MealList } from './components/MealList';
-import { ShoppingList } from './components/ShoppingList';
-import { ChatCoach } from './components/ChatCoach';
-import { Navigation } from './components/Navigation';
-import { generateMealPlan } from './services/geminiService';
+import { useEffect, useState } from "react";
+import { ChatCoach } from "./components/ChatCoach";
+import { Dashboard } from "./components/Dashboard";
+import { MealList } from "./components/MealList";
+import { Navigation } from "./components/Navigation";
+import { Onboarding } from "./components/Onboarding";
+import { ShoppingList } from "./components/ShoppingList";
+import { generateMealPlan } from "./services/geminiService";
+import { Ingredient, Meal, UserProfile, ViewState } from "./types";
 
 const App = () => {
   const [view, setView] = useState<ViewState>(ViewState.ONBOARDING);
@@ -17,14 +17,14 @@ const App = () => {
 
   // Load state from localStorage on mount
   useEffect(() => {
-    const savedProfile = localStorage.getItem('nutripulse_profile');
-    const savedMeals = localStorage.getItem('nutripulse_meals');
-    const savedShop = localStorage.getItem('nutripulse_shopping');
+    const savedProfile = localStorage.getItem("nutripulse_profile");
+    const savedMeals = localStorage.getItem("nutripulse_meals");
+    const savedShop = localStorage.getItem("nutripulse_shopping");
 
     if (savedProfile) {
       const parsedProfile = JSON.parse(savedProfile);
       // Migration for old profiles without language
-      if (!parsedProfile.language) parsedProfile.language = 'ru';
+      if (!parsedProfile.language) parsedProfile.language = "ru";
       setProfile(parsedProfile);
       setView(ViewState.DASHBOARD);
     }
@@ -34,13 +34,14 @@ const App = () => {
 
   // Save profile updates
   useEffect(() => {
-    if (profile) localStorage.setItem('nutripulse_profile', JSON.stringify(profile));
+    if (profile)
+      localStorage.setItem("nutripulse_profile", JSON.stringify(profile));
   }, [profile]);
 
   // Save meal/shopping updates
   useEffect(() => {
-    localStorage.setItem('nutripulse_meals', JSON.stringify(meals));
-    localStorage.setItem('nutripulse_shopping', JSON.stringify(shoppingList));
+    localStorage.setItem("nutripulse_meals", JSON.stringify(meals));
+    localStorage.setItem("nutripulse_shopping", JSON.stringify(shoppingList));
   }, [meals, shoppingList]);
 
   const handleOnboardingComplete = (newProfile: UserProfile) => {
@@ -72,11 +73,11 @@ const App = () => {
 
   const handleRegenerateWithExclusions = async (exclusions: string) => {
     if (!profile) return;
-    
+
     // 1. Update Profile with new exclusions
     const updatedProfile = { ...profile, excludedIngredients: exclusions };
     setProfile(updatedProfile);
-    
+
     // 2. Trigger generation with updated profile
     setIsLoadingPlan(true);
     try {
@@ -105,25 +106,27 @@ const App = () => {
     return <Onboarding onComplete={handleOnboardingComplete} />;
   }
 
-  const currentLang = profile.language || 'ru';
+  const currentLang = profile.language || "ru";
 
   return (
-    <div className="bg-slate-50 min-h-screen font-sans text-slate-900">
+    <div className="bg-slate-50 min-h-screen font-sans text-slate-900 pt-safe pb-safe">
       <main className="mx-auto w-full">
         {view === ViewState.DASHBOARD && (
-          <Dashboard 
-            profile={profile} 
+          <Dashboard
+            profile={profile}
             updateLastMeal={updateLastMeal}
             onRequestPlan={handleGeneratePlan}
             hasPlan={meals.length > 0}
             isLoadingPlan={isLoadingPlan}
           />
         )}
-        {view === ViewState.MEALS && <MealList meals={meals} language={currentLang} />}
+        {view === ViewState.MEALS && (
+          <MealList meals={meals} language={currentLang} />
+        )}
         {view === ViewState.SHOPPING && (
-          <ShoppingList 
-            items={shoppingList} 
-            toggleItem={toggleShoppingItem} 
+          <ShoppingList
+            items={shoppingList}
+            toggleItem={toggleShoppingItem}
             clearAll={clearShoppingList}
             onRegenerate={handleRegenerateWithExclusions}
             isRegenerating={isLoadingPlan}

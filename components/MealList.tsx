@@ -56,9 +56,9 @@ export const MealList: React.FC<MealListProps> = ({ meals, language }) => {
   }
 
   return (
-    <div className="flex flex-col h-screen max-w-lg mx-auto bg-slate-50">
+    <div className="flex flex-col h-screen max-w-lg mx-auto bg-slate-50 pt-safe">
       {/* Header & Tabs */}
-      <div className="bg-white sticky top-0 z-10 shadow-sm border-b border-slate-100 pt-safe">
+      <div className="bg-white sticky top-0 z-10 shadow-sm border-b border-slate-100">
         <div className="p-6 pb-2">
           <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
             <Calendar className="text-teal-600" />
@@ -85,7 +85,7 @@ export const MealList: React.FC<MealListProps> = ({ meals, language }) => {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-24">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-32">
         {mealsByDay[activeDay]?.map((meal) => (
           <div
             key={meal.id}

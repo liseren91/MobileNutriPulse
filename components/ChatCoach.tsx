@@ -1,9 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { ChatMessage, UserProfile } from '../types';
-import { chatWithNutritionist } from '../services/geminiService';
-import { Send, User } from 'lucide-react';
-import { t } from '../translations';
-import { Mascot } from './Mascot';
+import { Send, User } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { chatWithNutritionist } from "../services/geminiService";
+import { t } from "../translations";
+import { ChatMessage, UserProfile } from "../types";
+import { Mascot } from "./Mascot";
 
 interface ChatCoachProps {
   profile: UserProfile;
@@ -90,28 +90,41 @@ export const ChatCoach: React.FC<ChatCoachProps> = ({ profile }) => {
   };
 
   return (
-    <div className="flex flex-col h-screen max-w-lg mx-auto relative">
-      <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-40" ref={scrollRef}>
+    <div className="flex flex-col h-screen max-w-lg mx-auto relative pt-safe">
+      <div
+        className="flex-1 overflow-y-auto p-4 space-y-6 pb-40"
+        ref={scrollRef}
+      >
         {messages.map((msg) => {
           const isUser = msg.role === "user";
           return (
-            <div 
-              key={msg.id} 
-              className={`flex items-end gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
+            <div
+              key={msg.id}
+              className={`flex items-end gap-3 ${
+                isUser ? "flex-row-reverse" : "flex-row"
+              }`}
             >
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 border-2 shadow-sm ${
-                isUser ? 'bg-slate-200 border-white text-slate-600' : 'bg-teal-50 border-teal-100'
-              }`}>
-                {isUser ? <User size={18} /> : 
-                // @ts-ignore
-                <Mascot mood="happy" size={32} />
-                }
+              <div
+                className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 border-2 shadow-sm ${
+                  isUser
+                    ? "bg-slate-200 border-white text-slate-600"
+                    : "bg-teal-50 border-teal-100"
+                }`}
+              >
+                {isUser ? (
+                  <User size={18} />
+                ) : (
+                  // @ts-ignore
+                  <Mascot mood="happy" size={32} />
+                )}
               </div>
-              <div className={`max-w-[80%] p-4 rounded-[1.5rem] text-sm leading-relaxed shadow-sm ${
-                isUser 
-                  ? 'bg-slate-800 text-white rounded-br-none' 
-                  : 'bg-white border border-slate-100 text-slate-700 rounded-bl-none'
-              }`}>
+              <div
+                className={`max-w-[80%] p-4 rounded-[1.5rem] text-sm leading-relaxed shadow-sm ${
+                  isUser
+                    ? "bg-slate-800 text-white rounded-br-none"
+                    : "bg-white border border-slate-100 text-slate-700 rounded-bl-none"
+                }`}
+              >
                 {msg.text}
               </div>
             </div>
@@ -119,17 +132,17 @@ export const ChatCoach: React.FC<ChatCoachProps> = ({ profile }) => {
         })}
         {isLoading && (
           <div className="flex items-center gap-3">
-             <div className="w-10 h-10 rounded-full bg-teal-50 border border-teal-100 flex items-center justify-center shrink-0 shadow-sm">
-                {/* @ts-ignore */}
-                <Mascot mood="thinking" size={32} />
-             </div>
-             <div className="bg-white px-5 py-4 rounded-[1.5rem] rounded-bl-none shadow-sm border border-slate-100">
-               <div className="flex gap-1.5">
-                 <div className="w-2 h-2 bg-slate-300 rounded-full animate-bounce"></div>
-                 <div className="w-2 h-2 bg-slate-300 rounded-full animate-bounce delay-75"></div>
-                 <div className="w-2 h-2 bg-slate-300 rounded-full animate-bounce delay-150"></div>
-               </div>
-             </div>
+            <div className="w-10 h-10 rounded-full bg-teal-50 border border-teal-100 flex items-center justify-center shrink-0 shadow-sm">
+              {/* @ts-ignore */}
+              <Mascot mood="thinking" size={32} />
+            </div>
+            <div className="bg-white px-5 py-4 rounded-[1.5rem] rounded-bl-none shadow-sm border border-slate-100">
+              <div className="flex gap-1.5">
+                <div className="w-2 h-2 bg-slate-300 rounded-full animate-bounce"></div>
+                <div className="w-2 h-2 bg-slate-300 rounded-full animate-bounce delay-75"></div>
+                <div className="w-2 h-2 bg-slate-300 rounded-full animate-bounce delay-150"></div>
+              </div>
+            </div>
           </div>
         )}
       </div>
