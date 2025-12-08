@@ -1,5 +1,6 @@
 import {
   Calendar,
+  CheckCircle2,
   ChefHat,
   ChevronDown,
   ChevronUp,
@@ -97,6 +98,12 @@ export const MealList: React.FC<MealListProps> = ({ meals, language }) => {
             >
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
+                  {meal.completedAt && (
+                    <CheckCircle2
+                      size={16}
+                      className="text-teal-600 shrink-0"
+                    />
+                  )}
                   <span
                     className={`text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wide ${
                       meal.type === "Breakfast"
@@ -114,7 +121,11 @@ export const MealList: React.FC<MealListProps> = ({ meals, language }) => {
                     <Clock size={12} /> {meal.prepTime}
                   </span>
                 </div>
-                <h3 className="font-semibold text-slate-800 leading-tight">
+                <h3
+                  className={`font-semibold leading-tight ${
+                    meal.completedAt ? "text-slate-800" : "text-slate-600"
+                  }`}
+                >
                   {meal.name}
                 </h3>
               </div>

@@ -196,24 +196,26 @@ export const analyzeOffPlanMeal = async (
 
   const prompt = `The user ate something outside of their meal plan. They described: "${mealDescription}"
 
-    Analyze this meal and provide feedback in ${lang} language. Be supportive and kind, but honest:
+    Analyze this meal and provide feedback in ${lang} language. Be supportive, kind, and understanding:
     
-    1. If the meal is very unhealthy (fast food, high sugar, processed), gently point it out but don't be harsh. Say something like "I understand sometimes we need quick options, but..."
+    1. ALWAYS start by praising them for eating - acknowledge that eating is important and they did the right thing by eating something, even if it wasn't ideal. Say something like "Хорошо, что ты поел(а)!" or "Good that you ate!"
     
-    2. Provide practical recommendations:
-       - If they couldn't cook: suggest better fast food options (street food, bakery items, healthier delivery options)
-       - Acknowledge that healthy delivery is often slow and expensive, so people choose McDonald's
-       - Suggest street food or bakery options that would be better (e.g., shawarma with vegetables, bakery sandwich with protein, etc.)
-       - Give specific, actionable alternatives for next time
+    2. Show understanding - acknowledge that sometimes there's no time to cook, or they were too tired, or healthy delivery is slow/expensive. Be empathetic.
     
-    3. Be encouraging and remind them that one meal doesn't ruin progress
+    3. Provide practical, specific recommendations for next time:
+       - If they ate fast food (like McDonald's, Burger King): suggest better street food options (e.g., "может стоило скушать гирос без соусов?" or "maybe you could have eaten a gyro without sauces?")
+       - If they ordered delivery: suggest healthier but still convenient options
+       - If they grabbed something from a bakery: suggest better bakery options with more protein/vegetables
+       - Give 1-2 specific, actionable alternatives that are realistic for when they're in a hurry or don't want to cook
     
-    4. Keep it concise (2-3 short paragraphs max)
+    4. Be encouraging - remind them that one meal doesn't ruin progress and that consistency matters more than perfection
+    
+    5. Keep it friendly and conversational (2-3 short paragraphs max)
     
     The user's goal is: ${profile.goals}
     Their dietary preferences: ${profile.dietaryPreferences}
     
-    COMMUNICATE IN ${lang} LANGUAGE ONLY.`;
+    COMMUNICATE IN ${lang} LANGUAGE ONLY. Use a warm, supportive tone like a caring friend who understands their situation.`;
 
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash",
@@ -229,6 +231,70 @@ export const analyzeOffPlanMeal = async (
       ? "Unable to analyze meal."
       : "Не удалось проанализировать еду.")
   );
+};
+
+export const estimateMealCalories = async (
+  mealDescription: string,
+  profile: UserProfile
+): Promise<number | null> => {
+  const ai = getAiClient();
+  const lang = profile.language === "en" ? "ENGLISH" : "RUSSIAN";
+
+  const prompt = `The user ate: "${mealDescription}"
+
+    Estimate the approximate calories for this meal. Return ONLY a number (no text, no explanation, just the number).
+    
+    Be realistic - if it's fast food like a Big Mac, estimate around 500-600 kcal. If it's a pizza slice, estimate 200-300 kcal. If it's a full meal, estimate based on typical portions.
+    
+    Return ONLY the number, nothing else.`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+      config: {
+        responseMimeType: "text/plain",
+      },
+    });
+
+    const text = response.text?.trim() || "";
+    const calories = parseInt(text.replace(/[^\d]/g, ""), 10);
+
+    // Validate the result
+    if (isNaN(calories) || calories < 0 || calories > 5000) {
+      // Fallback estimation based on common foods
+      const lower = mealDescription.toLowerCase();
+      if (
+        lower.includes("big mac") ||
+        lower.includes("бургер") ||
+        lower.includes("burger")
+      ) {
+        return 550;
+      }
+      if (lower.includes("пицца") || lower.includes("pizza")) {
+        return 250;
+      }
+      if (
+        lower.includes("шаурма") ||
+        lower.includes("shawarma") ||
+        lower.includes("гирос") ||
+        lower.includes("gyro")
+      ) {
+        return 400;
+      }
+      if (lower.includes("суши") || lower.includes("sushi")) {
+        return 300;
+      }
+      // Default estimate
+      return 350;
+    }
+
+    return calories;
+  } catch (error) {
+    console.error("Failed to estimate calories", error);
+    // Fallback estimation
+    return 350;
+  }
 };
 
 export const chatWithNutritionist = async (

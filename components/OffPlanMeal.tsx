@@ -1,20 +1,25 @@
 import { Loader2, Send, X } from "lucide-react";
 import React, { useState } from "react";
-import { analyzeOffPlanMeal } from "../services/geminiService";
+import {
+  analyzeOffPlanMeal,
+  estimateMealCalories,
+} from "../services/geminiService";
 import { t } from "../translations";
-import { UserProfile } from "../types";
+import { OffPlanMealEntry, UserProfile } from "../types";
 import { Mascot } from "./Mascot";
 
 interface OffPlanMealProps {
   profile: UserProfile;
   onClose: () => void;
   onMealAnalyzed?: () => void;
+  onMealSaved?: (meal: OffPlanMealEntry) => void;
 }
 
 export const OffPlanMeal: React.FC<OffPlanMealProps> = ({
   profile,
   onClose,
   onMealAnalyzed,
+  onMealSaved,
 }) => {
   const lang = profile.language || "ru";
   const text = t[lang].offPlanMeal || t[lang].chat; // Fallback to chat translations
@@ -30,8 +35,24 @@ export const OffPlanMeal: React.FC<OffPlanMealProps> = ({
     setFeedback(null);
 
     try {
-      const analysis = await analyzeOffPlanMeal(mealDescription, profile);
+      const [analysis, calories] = await Promise.all([
+        analyzeOffPlanMeal(mealDescription, profile),
+        estimateMealCalories(mealDescription, profile),
+      ]);
       setFeedback(analysis);
+
+      // Save the off-plan meal entry
+      if (onMealSaved) {
+        const mealEntry: OffPlanMealEntry = {
+          id: Date.now().toString(),
+          description: mealDescription,
+          timestamp: Date.now(),
+          estimatedCalories: calories || undefined,
+          day: 1, // For MVP, default to day 1
+        };
+        onMealSaved(mealEntry);
+      }
+
       if (onMealAnalyzed) {
         onMealAnalyzed();
       }

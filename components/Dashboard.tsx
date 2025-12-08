@@ -10,9 +10,11 @@ import {
 } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import { t } from "../translations";
-import { UserProfile } from "../types";
+import { Meal, UserProfile } from "../types";
+import { DayEndReview } from "./DayEndReview";
 import { Mascot } from "./Mascot";
 import { OffPlanMeal } from "./OffPlanMeal";
+import { QuickMealFeedback } from "./QuickMealFeedback";
 
 interface DashboardProps {
   profile: UserProfile;
@@ -20,6 +22,8 @@ interface DashboardProps {
   onRequestPlan: () => void;
   hasPlan: boolean;
   isLoadingPlan: boolean;
+  meals: Meal[];
+  onOffPlanMealSaved?: (meal: import("../types").OffPlanMealEntry) => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -28,6 +32,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onRequestPlan,
   hasPlan,
   isLoadingPlan,
+  meals,
+  onOffPlanMealSaved,
 }) => {
   const [timeLeft, setTimeLeft] = useState<string>("00:00:00");
   const [progress, setProgress] = useState(100);
@@ -36,7 +42,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
   );
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [showOffPlanMeal, setShowOffPlanMeal] = useState(false);
+  const [showQuickMealFeedback, setShowQuickMealFeedback] = useState(false);
+  const [showDayEndReview, setShowDayEndReview] = useState(false);
+  const [reviewDay, setReviewDay] = useState<number>(1);
   const hasNotifiedRef = useRef(false);
+  const dayEndReviewShownRef = useRef<string>(""); // Track which day we've shown review for
 
   const lang = profile.language || "ru";
   const text = t[lang].dashboard;
@@ -167,6 +177,40 @@ export const Dashboard: React.FC<DashboardProps> = ({
     return () => clearInterval(interval);
   }, [profile, notificationsEnabled, lang, text]);
 
+  // Check for end of day review
+  useEffect(() => {
+    if (!hasPlan || meals.length === 0) return;
+
+    const checkDayEnd = () => {
+      const now = new Date();
+      const currentHour = now.getHours();
+      const today = now.toDateString();
+
+      // Show review 1 hour before sleep time (or at sleep time if it's late)
+      const reviewHour = SLEEP_START_HOUR - 1;
+      const shouldShowReview =
+        currentHour >= reviewHour && currentHour < SLEEP_START_HOUR + 1;
+
+      // Check if we've already shown review for today
+      if (shouldShowReview && dayEndReviewShownRef.current !== today) {
+        // Determine which day to review (for now, day 1)
+        // In future, can be improved to track actual plan start date
+        const dayToReview = 1;
+        const dayMeals = meals.filter((m) => m.day === dayToReview);
+
+        if (dayMeals.length > 0) {
+          setReviewDay(dayToReview);
+          setShowDayEndReview(true);
+          dayEndReviewShownRef.current = today;
+        }
+      }
+    };
+
+    checkDayEnd();
+    const interval = setInterval(checkDayEnd, 60 * 60 * 1000); // Check every hour
+    return () => clearInterval(interval);
+  }, [hasPlan, meals, SLEEP_START_HOUR]);
+
   const requestAccess = () => {
     Notification.requestPermission().then((perm) =>
       setNotificationsEnabled(perm === "granted")
@@ -252,20 +296,32 @@ export const Dashboard: React.FC<DashboardProps> = ({
             {timeLeft}
           </div>
 
-          <button
-            onClick={updateLastMeal}
-            className={`group relative overflow-hidden bg-white text-slate-900 px-10 py-4 rounded-full font-bold shadow-lg shadow-black/10 active:scale-95 transition-all flex items-center gap-3`}
-          >
-            <span className="absolute inset-0 bg-slate-100 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300"></span>
-            <span className="relative flex items-center gap-2">
-              {status === "Night" ? (
-                <Sun size={20} className="text-amber-500" />
-              ) : (
-                <Clock size={20} className="text-teal-500" />
-              )}
-              {status === "Night" ? text.iAteBreakfast : text.iAte}
-            </span>
-          </button>
+          <div className="flex flex-col gap-3 w-full">
+            <button
+              onClick={updateLastMeal}
+              className={`group relative overflow-hidden bg-white text-slate-900 px-10 py-4 rounded-full font-bold shadow-lg shadow-black/10 active:scale-95 transition-all flex items-center justify-center gap-3`}
+            >
+              <span className="absolute inset-0 bg-slate-100 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300"></span>
+              <span className="relative flex items-center gap-2">
+                {status === "Night" ? (
+                  <Sun size={20} className="text-amber-500" />
+                ) : (
+                  <Clock size={20} className="text-teal-500" />
+                )}
+                {status === "Night" ? text.iAteBreakfast : text.iAte}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setShowQuickMealFeedback(true)}
+              className={`group relative overflow-hidden bg-white/90 text-slate-700 px-8 py-3 rounded-full font-semibold shadow-md shadow-black/5 active:scale-95 transition-all flex items-center justify-center gap-2 text-sm border border-slate-200`}
+            >
+              <span className="relative flex items-center gap-2">
+                <UtensilsCrossed size={16} className="text-orange-500" />
+                {text.iAteSomethingElse}
+              </span>
+            </button>
+          </div>
 
           {status === "Urgent" && (
             <p className="mt-6 text-white font-bold bg-white/20 px-4 py-1 rounded-full text-sm flex items-center gap-2 animate-pulse">
@@ -375,6 +431,25 @@ export const Dashboard: React.FC<DashboardProps> = ({
           profile={profile}
           onClose={() => setShowOffPlanMeal(false)}
           onMealAnalyzed={updateLastMeal}
+          onMealSaved={onOffPlanMealSaved}
+        />
+      )}
+
+      {showQuickMealFeedback && (
+        <QuickMealFeedback
+          profile={profile}
+          onClose={() => setShowQuickMealFeedback(false)}
+          onMealAnalyzed={updateLastMeal}
+          onMealSaved={onOffPlanMealSaved}
+        />
+      )}
+
+      {showDayEndReview && (
+        <DayEndReview
+          profile={profile}
+          meals={meals}
+          day={reviewDay}
+          onClose={() => setShowDayEndReview(false)}
         />
       )}
     </div>
