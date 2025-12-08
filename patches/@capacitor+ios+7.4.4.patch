@@ -1,3 +1,17 @@
+diff --git a/node_modules/@capacitor/ios/Capacitor/.DS_Store b/node_modules/@capacitor/ios/Capacitor/.DS_Store
+new file mode 100644
+index 0000000..df6996d
+Binary files /dev/null and b/node_modules/@capacitor/ios/Capacitor/.DS_Store differ
+diff --git a/node_modules/@capacitor/ios/Capacitor/Capacitor/CAPBridgeViewController+CDVScreenOrientationDelegate.h b/node_modules/@capacitor/ios/Capacitor/Capacitor/CAPBridgeViewController+CDVScreenOrientationDelegate.h
+index aeda727..66c3bab 100644
+--- a/node_modules/@capacitor/ios/Capacitor/Capacitor/CAPBridgeViewController+CDVScreenOrientationDelegate.h
++++ b/node_modules/@capacitor/ios/Capacitor/Capacitor/CAPBridgeViewController+CDVScreenOrientationDelegate.h
+@@ -1,4 +1,5 @@
+ #import <Capacitor/Capacitor-Swift.h>
++#import <Cordova/CDVScreenOrientationDelegate.h>
+ 
+ @interface CAPBridgeViewController (CDVScreenOrientationDelegate) <CDVScreenOrientationDelegate>
+ 
 diff --git a/node_modules/@capacitor/ios/Capacitor/Capacitor/CAPInstanceDescriptor.h b/node_modules/@capacitor/ios/Capacitor/Capacitor/CAPInstanceDescriptor.h
 index f477ef5..fcdfce6 100644
 --- a/node_modules/@capacitor/ios/Capacitor/Capacitor/CAPInstanceDescriptor.h
@@ -14,3 +28,14 @@ index f477ef5..fcdfce6 100644
  
  typedef NS_ENUM(NSInteger, CAPInstanceType) {
      CAPInstanceTypeFixed NS_SWIFT_NAME(fixed),
+diff --git a/node_modules/@capacitor/ios/Capacitor/Capacitor/CAPInstanceDescriptor.m b/node_modules/@capacitor/ios/Capacitor/Capacitor/CAPInstanceDescriptor.m
+index 2d7a4fb..50aa83f 100644
+--- a/node_modules/@capacitor/ios/Capacitor/Capacitor/CAPInstanceDescriptor.m
++++ b/node_modules/@capacitor/ios/Capacitor/Capacitor/CAPInstanceDescriptor.m
+@@ -1,5 +1,6 @@
+ #import "CAPInstanceDescriptor.h"
+ #import <Capacitor/Capacitor-Swift.h>
++#import <Cordova/CDVConfigParser.h>
+ 
+ // Swift extensions marked as @objc and internal are available to the Obj-C runtime but are not available at compile time.
+ // so we need this declaration to avoid compiler complaints
