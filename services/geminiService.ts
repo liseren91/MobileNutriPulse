@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { Ingredient, Meal, UserProfile } from "../types";
+import { Ingredient, Macronutrients, Meal, UserProfile } from "../types";
 
 const getAiClient = () => {
   const apiKey = process.env.API_KEY;
@@ -294,6 +294,312 @@ export const estimateMealCalories = async (
     console.error("Failed to estimate calories", error);
     // Fallback estimation
     return 350;
+  }
+};
+
+export const analyzeOffPlanMealFromPhoto = async (
+  imageBase64: string,
+  mimeType: string = "image/jpeg",
+  profile: UserProfile
+): Promise<string> => {
+  const ai = getAiClient();
+  const lang = profile.language === "en" ? "ENGLISH" : "RUSSIAN";
+
+  const prompt = `The user ate something outside of their meal plan. They sent a photo of their meal.
+
+    Analyze this meal from the photo and provide feedback in ${lang} language. Be supportive, kind, and understanding:
+    
+    1. ALWAYS start by praising them for eating - acknowledge that eating is important and they did the right thing by eating something, even if it wasn't ideal. Say something like "Хорошо, что ты поел(а)!" or "Good that you ate!"
+    
+    2. Identify what food is in the photo - describe what you see (e.g., "I see a burger with fries", "I see pizza", "I see a salad with chicken")
+    
+    3. Show understanding - acknowledge that sometimes there's no time to cook, or they were too tired, or healthy delivery is slow/expensive. Be empathetic.
+    
+    4. Provide practical, specific recommendations for next time:
+       - If you see fast food: suggest better street food options (e.g., "может стоило скушать гирос без соусов?" or "maybe you could have eaten a gyro without sauces?")
+       - If you see delivery food: suggest healthier but still convenient options
+       - If you see bakery items: suggest better bakery options with more protein/vegetables
+       - Give 1-2 specific, actionable alternatives that are realistic for when they're in a hurry or don't want to cook
+    
+    5. Be encouraging - remind them that one meal doesn't ruin progress and that consistency matters more than perfection
+    
+    6. Keep it friendly and conversational (2-3 short paragraphs max)
+    
+    The user's goal is: ${profile.goals}
+    Their dietary preferences: ${profile.dietaryPreferences}
+    
+    COMMUNICATE IN ${lang} LANGUAGE ONLY. Use a warm, supportive tone like a caring friend who understands their situation.`;
+
+  const response = await ai.models.generateContent({
+    model: "gemini-2.5-flash",
+    contents: [
+      {
+        role: "user",
+        parts: [
+          {
+            inlineData: {
+              mimeType: mimeType,
+              data: imageBase64,
+            },
+          },
+          { text: prompt },
+        ],
+      },
+    ],
+    config: {
+      systemInstruction: `You are a supportive, kind, but honest nutritionist. You understand that people sometimes eat outside their plan due to time constraints, cost, or convenience. You provide practical, non-judgmental advice.`,
+    },
+  });
+
+  return (
+    response.text ||
+    (lang === "ENGLISH"
+      ? "Unable to analyze meal from photo."
+      : "Не удалось проанализировать еду по фото.")
+  );
+};
+
+export const estimateMealCaloriesFromPhoto = async (
+  imageBase64: string,
+  mimeType: string = "image/jpeg",
+  profile: UserProfile
+): Promise<number | null> => {
+  const ai = getAiClient();
+  const lang = profile.language === "en" ? "ENGLISH" : "RUSSIAN";
+
+  const prompt = `The user sent a photo of their meal. 
+
+    Look at the photo and estimate the approximate calories for this meal. Return ONLY a number (no text, no explanation, just the number).
+    
+    Be realistic - if it's fast food like a Big Mac, estimate around 500-600 kcal. If it's a pizza slice, estimate 200-300 kcal. If it's a full meal, estimate based on typical portions you can see in the photo.
+    
+    Consider the portion size visible in the photo.
+    
+    Return ONLY the number, nothing else.`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              inlineData: {
+                mimeType: "image/jpeg",
+                data: imageBase64,
+              },
+            },
+            { text: prompt },
+          ],
+        },
+      ],
+      config: {
+        responseMimeType: "text/plain",
+      },
+    });
+
+    const text = response.text?.trim() || "";
+    const calories = parseInt(text.replace(/[^\d]/g, ""), 10);
+
+    // Validate the result
+    if (isNaN(calories) || calories < 0 || calories > 5000) {
+      // Default estimate if AI can't determine
+      return 350;
+    }
+
+    return calories;
+  } catch (error) {
+    console.error("Failed to estimate calories from photo", error);
+    // Fallback estimation
+    return 350;
+  }
+};
+
+export const identifyMealFromPhoto = async (
+  imageBase64: string,
+  mimeType: string = "image/jpeg",
+  profile: UserProfile
+): Promise<string> => {
+  const ai = getAiClient();
+  const lang = profile.language === "en" ? "ENGLISH" : "RUSSIAN";
+
+  const prompt = `Look at this photo of food. Identify what food is in the photo and describe it briefly in ${lang} language. 
+    
+    Return a short description (1-2 sentences max) of what you see. For example: "Бургер с картошкой фри" or "Pizza slice with pepperoni".
+    
+    Return ONLY the description, nothing else.`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              inlineData: {
+                mimeType: "image/jpeg",
+                data: imageBase64,
+              },
+            },
+            { text: prompt },
+          ],
+        },
+      ],
+      config: {
+        responseMimeType: "text/plain",
+      },
+    });
+
+    return response.text?.trim() || (lang === "en" ? "Food" : "Еда");
+  } catch (error) {
+    console.error("Failed to identify meal from photo", error);
+    return lang === "en" ? "Food" : "Еда";
+  }
+};
+
+export const analyzeMacronutrients = async (
+  mealDescription: string,
+  calories: number,
+  profile: UserProfile
+): Promise<Macronutrients | null> => {
+  const ai = getAiClient();
+  const lang = profile.language === "en" ? "ENGLISH" : "RUSSIAN";
+
+  const prompt = `The user ate: "${mealDescription}"
+    Total calories: ${calories} kcal
+
+    Estimate the macronutrients (protein, carbs, fat) for this meal in grams.
+    Return ONLY a JSON object with this exact structure:
+    {
+      "protein": <number in grams>,
+      "carbs": <number in grams>,
+      "fat": <number in grams>
+    }
+    
+    Make sure the total calories match approximately:
+    - Protein: 4 kcal per gram
+    - Carbs: 4 kcal per gram
+    - Fat: 9 kcal per gram
+    
+    Total should be approximately ${calories} kcal (allow ±10% variance).
+    
+    Return ONLY the JSON object, nothing else.`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            protein: { type: Type.NUMBER },
+            carbs: { type: Type.NUMBER },
+            fat: { type: Type.NUMBER },
+          },
+        },
+      },
+    });
+
+    if (response.text) {
+      const data = JSON.parse(response.text);
+      return {
+        protein: Math.max(0, Math.round(data.protein || 0)),
+        carbs: Math.max(0, Math.round(data.carbs || 0)),
+        fat: Math.max(0, Math.round(data.fat || 0)),
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error("Failed to analyze macronutrients", error);
+    // Fallback: estimate based on calories
+    return {
+      protein: Math.round((calories * 0.15) / 4), // 15% protein
+      carbs: Math.round((calories * 0.55) / 4), // 55% carbs
+      fat: Math.round((calories * 0.3) / 9), // 30% fat
+    };
+  }
+};
+
+export const analyzeMacronutrientsFromPhoto = async (
+  imageBase64: string,
+  mimeType: string,
+  calories: number,
+  profile: UserProfile
+): Promise<Macronutrients | null> => {
+  const ai = getAiClient();
+  const lang = profile.language === "en" ? "ENGLISH" : "RUSSIAN";
+
+  const prompt = `Look at this photo of food. The user ate this meal.
+    Total calories: ${calories} kcal
+
+    Estimate the macronutrients (protein, carbs, fat) for this meal in grams based on what you see in the photo.
+    Return ONLY a JSON object with this exact structure:
+    {
+      "protein": <number in grams>,
+      "carbs": <number in grams>,
+      "fat": <number in grams>
+    }
+    
+    Make sure the total calories match approximately:
+    - Protein: 4 kcal per gram
+    - Carbs: 4 kcal per gram
+    - Fat: 9 kcal per gram
+    
+    Total should be approximately ${calories} kcal (allow ±10% variance).
+    
+    Return ONLY the JSON object, nothing else.`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              inlineData: {
+                mimeType: mimeType,
+                data: imageBase64,
+              },
+            },
+            { text: prompt },
+          ],
+        },
+      ],
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            protein: { type: Type.NUMBER },
+            carbs: { type: Type.NUMBER },
+            fat: { type: Type.NUMBER },
+          },
+        },
+      },
+    });
+
+    if (response.text) {
+      const data = JSON.parse(response.text);
+      return {
+        protein: Math.max(0, Math.round(data.protein || 0)),
+        carbs: Math.max(0, Math.round(data.carbs || 0)),
+        fat: Math.max(0, Math.round(data.fat || 0)),
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error("Failed to analyze macronutrients from photo", error);
+    // Fallback: estimate based on calories
+    return {
+      protein: Math.round((calories * 0.15) / 4), // 15% protein
+      carbs: Math.round((calories * 0.55) / 4), // 55% carbs
+      fat: Math.round((calories * 0.3) / 9), // 30% fat
+    };
   }
 };
 

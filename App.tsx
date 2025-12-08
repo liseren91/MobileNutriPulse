@@ -7,10 +7,12 @@ import { Onboarding } from "./components/Onboarding";
 import { ShoppingList } from "./components/ShoppingList";
 import { Statistics } from "./components/Statistics";
 import {
+  analyzeMacronutrients,
   generateMealPlan,
   replaceMealsWithIngredient,
 } from "./services/geminiService";
 import {
+  EatenMealEntry,
   Ingredient,
   Meal,
   OffPlanMealEntry,
@@ -24,6 +26,7 @@ const App = () => {
   const [meals, setMeals] = useState<Meal[]>([]);
   const [shoppingList, setShoppingList] = useState<Ingredient[]>([]);
   const [offPlanMeals, setOffPlanMeals] = useState<OffPlanMealEntry[]>([]);
+  const [eatenMeals, setEatenMeals] = useState<EatenMealEntry[]>([]);
   const [isLoadingPlan, setIsLoadingPlan] = useState(false);
 
   // Load state from localStorage on mount
@@ -32,6 +35,7 @@ const App = () => {
     const savedMeals = localStorage.getItem("nutripulse_meals");
     const savedShop = localStorage.getItem("nutripulse_shopping");
     const savedOffPlan = localStorage.getItem("nutripulse_offplan");
+    const savedEatenMeals = localStorage.getItem("nutripulse_eaten");
 
     if (savedProfile) {
       const parsedProfile = JSON.parse(savedProfile);
@@ -43,6 +47,7 @@ const App = () => {
     if (savedMeals) setMeals(JSON.parse(savedMeals));
     if (savedShop) setShoppingList(JSON.parse(savedShop));
     if (savedOffPlan) setOffPlanMeals(JSON.parse(savedOffPlan));
+    if (savedEatenMeals) setEatenMeals(JSON.parse(savedEatenMeals));
   }, []);
 
   // Save profile updates
@@ -61,6 +66,11 @@ const App = () => {
   useEffect(() => {
     localStorage.setItem("nutripulse_offplan", JSON.stringify(offPlanMeals));
   }, [offPlanMeals]);
+
+  // Save eaten meals
+  useEffect(() => {
+    localStorage.setItem("nutripulse_eaten", JSON.stringify(eatenMeals));
+  }, [eatenMeals]);
 
   const handleOnboardingComplete = (newProfile: UserProfile) => {
     setProfile(newProfile);
@@ -123,7 +133,7 @@ const App = () => {
     const updated = { ...profile, lastMealTime: now };
     setProfile(updated);
 
-    // Mark corresponding meal as completed
+    // Mark corresponding meal as completed and save to eaten meals
     const mealToMark = getMealToMark();
     if (mealToMark && meals.length > 0) {
       const mealToUpdate = meals.find(
@@ -134,6 +144,90 @@ const App = () => {
           m.id === mealToUpdate.id ? { ...m, completedAt: now } : m
         );
         setMeals(updatedMeals);
+
+        // Save to eaten meals with BJU analysis
+        const calories = mealToUpdate.calories || 0;
+        if (calories > 0 && profile) {
+          // Analyze BJU asynchronously
+          analyzeMacronutrients(
+            mealToUpdate.description || mealToUpdate.name,
+            calories,
+            profile
+          )
+            .then((macronutrients) => {
+              // Calculate activity hours (rough estimate: 1 hour of moderate activity = ~300 kcal)
+              const activityHours =
+                calories > 0 ? Math.round((calories / 300) * 10) / 10 : 0;
+
+              const eatenMeal: EatenMealEntry = {
+                id: `eaten-${now}-${mealToUpdate.id}`,
+                name: mealToUpdate.name,
+                description: mealToUpdate.description,
+                timestamp: now,
+                calories: calories,
+                macronutrients: macronutrients || undefined,
+                activityHours: activityHours > 0 ? activityHours : undefined,
+                source: "planned",
+                mealId: mealToUpdate.id,
+                day: mealToUpdate.day,
+              };
+              setEatenMeals((prev) => {
+                // Check if already exists
+                const exists = prev.find((m) => m.id === eatenMeal.id);
+                if (exists) {
+                  return prev.map((m) =>
+                    m.id === eatenMeal.id ? eatenMeal : m
+                  );
+                }
+                return [...prev, eatenMeal];
+              });
+            })
+            .catch((error) => {
+              console.error("Failed to analyze macronutrients", error);
+              // Save without BJU
+              const activityHours =
+                calories > 0 ? Math.round((calories / 300) * 10) / 10 : 0;
+              const eatenMeal: EatenMealEntry = {
+                id: `eaten-${now}-${mealToUpdate.id}`,
+                name: mealToUpdate.name,
+                description: mealToUpdate.description,
+                timestamp: now,
+                calories: calories,
+                activityHours: activityHours > 0 ? activityHours : undefined,
+                source: "planned",
+                mealId: mealToUpdate.id,
+                day: mealToUpdate.day,
+              };
+              setEatenMeals((prev) => {
+                const exists = prev.find((m) => m.id === eatenMeal.id);
+                if (exists) {
+                  return prev.map((m) =>
+                    m.id === eatenMeal.id ? eatenMeal : m
+                  );
+                }
+                return [...prev, eatenMeal];
+              });
+            });
+        } else {
+          // Save without BJU if no calories
+          const eatenMeal: EatenMealEntry = {
+            id: `eaten-${now}-${mealToUpdate.id}`,
+            name: mealToUpdate.name,
+            description: mealToUpdate.description,
+            timestamp: now,
+            calories: calories,
+            source: "planned",
+            mealId: mealToUpdate.id,
+            day: mealToUpdate.day,
+          };
+          setEatenMeals((prev) => {
+            const exists = prev.find((m) => m.id === eatenMeal.id);
+            if (exists) {
+              return prev.map((m) => (m.id === eatenMeal.id ? eatenMeal : m));
+            }
+            return [...prev, eatenMeal];
+          });
+        }
       }
     }
   };
@@ -213,7 +307,7 @@ const App = () => {
   const currentLang = profile.language || "ru";
 
   return (
-    <div className="bg-slate-50 min-h-screen font-sans text-slate-900 pt-safe pb-safe">
+    <div className="bg-slate-50 min-h-screen font-sans text-slate-900">
       <main className="mx-auto w-full">
         {view === ViewState.DASHBOARD && (
           <Dashboard
@@ -223,9 +317,40 @@ const App = () => {
             hasPlan={meals.length > 0}
             isLoadingPlan={isLoadingPlan}
             meals={meals}
-            onOffPlanMealSaved={(meal) =>
-              setOffPlanMeals((prev) => [...prev, meal])
-            }
+            onOffPlanMealSaved={async (meal) => {
+              setOffPlanMeals((prev) => [...prev, meal]);
+              // Also save to eaten meals with BJU analysis
+              const calories = meal.estimatedCalories || 0;
+              let macronutrients;
+              if (calories > 0 && profile) {
+                try {
+                  macronutrients = await analyzeMacronutrients(
+                    meal.description,
+                    calories,
+                    profile
+                  );
+                } catch (error) {
+                  console.error("Failed to analyze macronutrients", error);
+                }
+              }
+
+              // Calculate activity hours (rough estimate: 1 hour of moderate activity = ~300 kcal)
+              const activityHours =
+                calories > 0 ? Math.round((calories / 300) * 10) / 10 : 0;
+
+              const eatenMeal: EatenMealEntry = {
+                id: `eaten-${meal.timestamp}-${meal.id}`,
+                name: meal.description,
+                description: meal.description,
+                timestamp: meal.timestamp,
+                calories: calories,
+                macronutrients: macronutrients || undefined,
+                activityHours: activityHours > 0 ? activityHours : undefined,
+                source: "off-plan",
+                day: meal.day,
+              };
+              setEatenMeals((prev) => [...prev, eatenMeal]);
+            }}
           />
         )}
         {view === ViewState.MEALS && (
@@ -247,6 +372,7 @@ const App = () => {
           <Statistics
             meals={meals}
             offPlanMeals={offPlanMeals}
+            eatenMeals={eatenMeals}
             language={currentLang}
           />
         )}

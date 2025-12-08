@@ -1,17 +1,26 @@
-import { BarChart3, Calendar, Flame, TrendingUp } from "lucide-react";
+import {
+  BarChart3,
+  Calendar,
+  Clock,
+  Flame,
+  TrendingUp,
+  UtensilsCrossed,
+} from "lucide-react";
 import React, { useMemo } from "react";
 import { t } from "../translations";
-import { Meal, OffPlanMealEntry } from "../types";
+import { EatenMealEntry, Meal, OffPlanMealEntry } from "../types";
 
 interface StatisticsProps {
   meals: Meal[];
   offPlanMeals: OffPlanMealEntry[];
+  eatenMeals: EatenMealEntry[];
   language: "ru" | "en";
 }
 
 export const Statistics: React.FC<StatisticsProps> = ({
   meals,
   offPlanMeals,
+  eatenMeals,
   language,
 }) => {
   const text = t[language].stats;
@@ -237,8 +246,176 @@ export const Statistics: React.FC<StatisticsProps> = ({
           </div>
         </div>
 
+        {/* Eaten meals list */}
+        {eatenMeals.length > 0 && (
+          <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6">
+            <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+              <UtensilsCrossed className="text-teal-600" size={20} />
+              {text.eatenMeals ||
+                (language === "ru" ? "Съедено" : "Eaten Meals")}
+            </h2>
+            <div className="space-y-4">
+              {eatenMeals
+                .slice()
+                .reverse()
+                .map((meal) => {
+                  const getMacroQuality = (
+                    value: number,
+                    calories: number,
+                    type: "protein" | "carbs" | "fat"
+                  ): "good" | "neutral" | "bad" => {
+                    if (calories === 0) return "neutral";
+                    const percentage =
+                      type === "fat"
+                        ? ((value * 9) / calories) * 100
+                        : ((value * 4) / calories) * 100;
+
+                    if (type === "protein") {
+                      if (percentage >= 20) return "good";
+                      if (percentage >= 10) return "neutral";
+                      return "bad";
+                    } else if (type === "carbs") {
+                      if (percentage >= 40 && percentage <= 60) return "good";
+                      if (percentage >= 30 && percentage <= 70)
+                        return "neutral";
+                      return "bad";
+                    } else {
+                      // fat
+                      if (percentage >= 20 && percentage <= 35) return "good";
+                      if (percentage >= 15 && percentage <= 40)
+                        return "neutral";
+                      return "bad";
+                    }
+                  };
+
+                  return (
+                    <div
+                      key={meal.id}
+                      className="p-4 bg-slate-50 rounded-xl border border-slate-200"
+                    >
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold text-slate-800">
+                            {meal.name}
+                          </p>
+                          <p className="text-xs text-slate-500 mt-1">
+                            {new Date(meal.timestamp).toLocaleDateString(
+                              language === "ru" ? "ru-RU" : "en-US",
+                              {
+                                day: "numeric",
+                                month: "short",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              }
+                            )}
+                          </p>
+                        </div>
+                        <div className="text-right ml-3">
+                          <div className="text-sm font-bold text-slate-800">
+                            {meal.calories} {text.kcal}
+                          </div>
+                          {meal.activityHours && (
+                            <div className="text-xs text-slate-500 flex items-center gap-1 mt-1">
+                              <Clock size={12} />
+                              {text.activityHours ||
+                                (language === "ru" ? "~" : "~")}
+                              {meal.activityHours}{" "}
+                              {language === "ru"
+                                ? "ч активности"
+                                : "h activity"}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {meal.macronutrients && (
+                        <div className="mt-3 pt-3 border-t border-slate-200">
+                          <p className="text-xs font-semibold text-slate-600 mb-2 uppercase tracking-wide">
+                            {text.macronutrients ||
+                              (language === "ru" ? "БЖУ" : "Macros")}
+                          </p>
+                          <div className="grid grid-cols-3 gap-2">
+                            {/* Protein */}
+                            <div className="text-center">
+                              <div
+                                className={`text-xs font-bold px-2 py-1 rounded-md ${
+                                  getMacroQuality(
+                                    meal.macronutrients.protein,
+                                    meal.calories,
+                                    "protein"
+                                  ) === "good"
+                                    ? "bg-green-100 text-green-700"
+                                    : getMacroQuality(
+                                        meal.macronutrients.protein,
+                                        meal.calories,
+                                        "protein"
+                                      ) === "neutral"
+                                    ? "bg-yellow-100 text-yellow-700"
+                                    : "bg-red-100 text-red-700"
+                                }`}
+                              >
+                                {language === "ru" ? "Б" : "P"}:{" "}
+                                {meal.macronutrients.protein}g
+                              </div>
+                            </div>
+                            {/* Carbs */}
+                            <div className="text-center">
+                              <div
+                                className={`text-xs font-bold px-2 py-1 rounded-md ${
+                                  getMacroQuality(
+                                    meal.macronutrients.carbs,
+                                    meal.calories,
+                                    "carbs"
+                                  ) === "good"
+                                    ? "bg-green-100 text-green-700"
+                                    : getMacroQuality(
+                                        meal.macronutrients.carbs,
+                                        meal.calories,
+                                        "carbs"
+                                      ) === "neutral"
+                                    ? "bg-yellow-100 text-yellow-700"
+                                    : "bg-red-100 text-red-700"
+                                }`}
+                              >
+                                {language === "ru" ? "У" : "C"}:{" "}
+                                {meal.macronutrients.carbs}g
+                              </div>
+                            </div>
+                            {/* Fat */}
+                            <div className="text-center">
+                              <div
+                                className={`text-xs font-bold px-2 py-1 rounded-md ${
+                                  getMacroQuality(
+                                    meal.macronutrients.fat,
+                                    meal.calories,
+                                    "fat"
+                                  ) === "good"
+                                    ? "bg-green-100 text-green-700"
+                                    : getMacroQuality(
+                                        meal.macronutrients.fat,
+                                        meal.calories,
+                                        "fat"
+                                      ) === "neutral"
+                                    ? "bg-yellow-100 text-yellow-700"
+                                    : "bg-red-100 text-red-700"
+                                }`}
+                              >
+                                {language === "ru" ? "Ж" : "F"}:{" "}
+                                {meal.macronutrients.fat}g
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        )}
+
         {/* Off-plan meals list */}
-        {offPlanMeals.length > 0 && (
+        {offPlanMeals.length > 0 && eatenMeals.length === 0 && (
           <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6">
             <h2 className="text-lg font-bold text-slate-800 mb-4">
               {text.offPlanMeals}

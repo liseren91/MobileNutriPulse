@@ -144,6 +144,9 @@ export const t = {
       planned: "По плану",
       offPlan: "Вне плана",
       offPlanMeals: "Внеплановые приемы пищи",
+      eatenMeals: "Съедено",
+      macronutrients: "БЖУ",
+      activityHours: "~",
     },
   },
   en: {
@@ -290,6 +293,9 @@ export const t = {
       planned: "Planned",
       offPlan: "Off-plan",
       offPlanMeals: "Off-plan Meals",
+      eatenMeals: "Eaten Meals",
+      macronutrients: "Macros",
+      activityHours: "~",
     },
   },
 };

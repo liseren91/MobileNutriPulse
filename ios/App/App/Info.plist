@@ -45,10 +45,35 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+		<key>UISceneConfigurations</key>
+		<dict>
+			<key>UIWindowSceneSessionRoleApplication</key>
+			<array>
+				<dict>
+					<key>UISceneConfigurationName</key>
+					<string>Default Configuration</string>
+					<key>UISceneDelegateClassName</key>
+					<string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
+					<key>UISceneStoryboardFile</key>
+					<string>Main</string>
+				</dict>
+			</array>
+		</dict>
+	</dict>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>NutriPulse needs access to your camera to take photos of your meals for automatic calorie tracking and nutrition analysis.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>NutriPulse needs access to your photo library to select photos of your meals for automatic calorie tracking and nutrition analysis.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>NutriPulse needs access to save photos of your meals.</string>
 </dict>
 </plist>

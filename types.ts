@@ -52,3 +52,22 @@ export interface OffPlanMealEntry {
   estimatedCalories?: number; // Estimated calories from AI or user input
   day?: number; // Which day of the plan this was eaten on
 }
+
+export interface Macronutrients {
+  protein: number; // grams
+  carbs: number; // grams
+  fat: number; // grams
+}
+
+export interface EatenMealEntry {
+  id: string;
+  name: string;
+  description: string;
+  timestamp: number;
+  calories: number;
+  macronutrients?: Macronutrients; // БЖУ
+  activityHours?: number; // Примерно на сколько часов активности
+  source: "planned" | "off-plan" | "photo"; // Откуда взялась еда
+  mealId?: string; // ID из плана, если это planned
+  day?: number; // День плана
+}
