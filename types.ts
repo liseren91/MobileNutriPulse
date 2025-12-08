@@ -15,6 +15,7 @@ export interface UserProfile {
   sleepStartHour: number;
   breakfastHour: number;
   excludedIngredients?: string; // New field for dislikes
+  language: 'ru' | 'en'; // New language field
 }
 
 export interface Ingredient {

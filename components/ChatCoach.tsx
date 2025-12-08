@@ -2,23 +2,33 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ChatMessage, UserProfile } from '../types';
 import { chatWithNutritionist } from '../services/geminiService';
 import { Send, Bot, User } from 'lucide-react';
+import { t } from '../translations';
 
 interface ChatCoachProps {
   profile: UserProfile;
 }
 
 export const ChatCoach: React.FC<ChatCoachProps> = ({ profile }) => {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: 'welcome',
-      role: 'model',
-      text: `Привет, ${profile.name}! Я твой персональный консультант по питанию. Я знаю, что твоя цель: ${profile.goals.toLowerCase()}. Как ты себя чувствуешь сегодня?`,
-      timestamp: Date.now()
-    }
-  ]);
+  const lang = profile.language || 'ru';
+  const text = t[lang].chat;
+
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const initRef = useRef(false);
+
+  useEffect(() => {
+    if (!initRef.current) {
+        initRef.current = true;
+        setMessages([{
+            id: 'welcome',
+            role: 'model',
+            text: text.welcome.replace('{name}', profile.name).replace('{goal}', profile.goals.toLowerCase()),
+            timestamp: Date.now()
+        }]);
+    }
+  }, [profile.name, profile.goals, text.welcome]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -41,7 +51,6 @@ export const ChatCoach: React.FC<ChatCoachProps> = ({ profile }) => {
     setIsLoading(true);
 
     try {
-      // Format history for Gemini
       const history = messages.map(m => ({
         role: m.role,
         parts: [{ text: m.text }]
@@ -52,7 +61,7 @@ export const ChatCoach: React.FC<ChatCoachProps> = ({ profile }) => {
       const botMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'model',
-        text: responseText || "Мне сейчас сложно ответить. Попробуйте еще раз?",
+        text: responseText || text.error,
         timestamp: Date.now()
       };
       
@@ -62,7 +71,7 @@ export const ChatCoach: React.FC<ChatCoachProps> = ({ profile }) => {
       const errorMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'model',
-        text: "Извините, нет связи с сервером. Проверьте интернет.",
+        text: text.connectionError,
         timestamp: Date.now()
       };
       setMessages(prev => [...prev, errorMsg]);
@@ -73,7 +82,7 @@ export const ChatCoach: React.FC<ChatCoachProps> = ({ profile }) => {
 
   return (
     <div className="flex flex-col h-screen max-w-lg mx-auto bg-slate-50">
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-24 safe-area-bottom" ref={scrollRef}>
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-32" ref={scrollRef}>
         {messages.map((msg) => {
           const isUser = msg.role === 'user';
           return (
@@ -112,14 +121,14 @@ export const ChatCoach: React.FC<ChatCoachProps> = ({ profile }) => {
         )}
       </div>
 
-      <div className="fixed bottom-16 left-0 right-0 p-4 bg-white border-t border-slate-200 max-w-lg mx-auto">
+      <div className="fixed bottom-safe-nav left-0 right-0 p-4 bg-white border-t border-slate-200 max-w-lg mx-auto">
         <div className="flex gap-2">
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            placeholder="Спросите что-нибудь..."
+            placeholder={text.placeholder}
             className="flex-1 bg-slate-100 border-none rounded-full px-4 py-3 focus:ring-2 focus:ring-teal-500 outline-none"
           />
           <button 

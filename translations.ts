@@ -1,0 +1,198 @@
+export const t = {
+  ru: {
+    onboarding: {
+      step: "Шаг",
+      of: "из",
+      welcome: "Добро пожаловать в NutriPulse",
+      subtitle: "Давайте настроим вашего личного помощника по питанию.",
+      nameLabel: "Как к вам обращаться?",
+      namePlaceholder: "например, Александр",
+      goalsTitle: "Ваши цели и питание",
+      mainGoalLabel: "Какова ваша главная цель?",
+      goals: {
+        weightLoss: "Похудеть и питаться регулярно",
+        muscle: "Набрать мышечную массу",
+        habits: "Поддерживать здоровые привычки",
+        energy: "Повысить уровень энергии"
+      },
+      dietLabel: "Есть ли ограничения в еде?",
+      dietPlaceholder: "например, Вегетарианец, Аллергия на орехи...",
+      intervalsTitle: "Интервалы",
+      intervalsSubtitle: "Как часто вы хотите есть в течение дня?",
+      every: "Каждые",
+      hours: "часа(ов)",
+      scheduleTitle: "Режим дня",
+      scheduleSubtitle: "Настройте время сна, чтобы мы не беспокоили вас ночью.",
+      bedtime: "Отбой (начало сна)",
+      wakeTime: "Завтрак (подъем)",
+      next: "Далее",
+      start: "Начать путь"
+    },
+    dashboard: {
+      hello: "Привет",
+      subtitle: "Поддерживаем уровень энергии.",
+      notificationsOn: "Уведомления включены",
+      notificationsOff: "Включить уведомления",
+      breakfastIn: "Завтрак через",
+      nextMeal: "Следующий прием пищи",
+      iAte: "Я поел(а)",
+      iAteBreakfast: "Я позавтракал(а)",
+      urgent: "Пожалуйста, перекусите сейчас!",
+      night: "Отдыхайте. До встречи утром!",
+      noPlan: "Нет активного плана",
+      noPlanDesc: "Создайте план на 3 дня с рецептами по 5-10 минут.",
+      createPlan: "Создать план",
+      creating: "Создаем...",
+      planActive: "План активен",
+      planActiveDesc: "У вас есть готовые рецепты и список продуктов.",
+      newPlan: "Новый план (3 дня)",
+      streak: "Серия",
+      water: "Вода",
+      waterNorm: "В норме",
+      days: "дня"
+    },
+    meals: {
+      title: "Ваш план на 3 дня",
+      subtitle: "Быстрые рецепты за 5-10 минут.",
+      day: "День",
+      types: {
+        Breakfast: "Завтрак",
+        Lunch: "Обед",
+        Dinner: "Ужин",
+        Snack: "Перекус"
+      },
+      ingredients: "Ингредиенты",
+      instructions: "Инструкции",
+      calories: "Ок. {cal} ккал",
+      noPlan: "План не создан",
+      noPlanDesc: "Создайте план на главной странице, чтобы начать.",
+      noMeals: "Нет запланированных приемов пищи на этот день."
+    },
+    shopping: {
+      title: "Список покупок",
+      left: "Осталось купить",
+      copy: "Скопировать список",
+      copied: "Скопировано!",
+      clear: "Очистить",
+      empty: "Список пуст",
+      emptyDesc: "Список продуктов появится здесь после создания плана.",
+      updating: "Обновляем список...",
+      regenerating: "Пересобираем меню...",
+      excludeBtn: "Что-то исключить? / У меня нет этих продуктов",
+      excludeTitle: "Исключить продукты",
+      excludeDesc: "Введите продукты, которые вы не любите или не можете купить. Мы запомним это и пересоздадим план.",
+      excludePlaceholder: "Например: лук, чеснок, дорогое мясо...",
+      regenerate: "Пересоздать план (3 дня)"
+    },
+    chat: {
+      welcome: "Привет, {name}! Я твой персональный консультант по питанию. Я знаю, что твоя цель: {goal}. Как ты себя чувствуешь сегодня?",
+      error: "Мне сейчас сложно ответить. Попробуйте еще раз?",
+      connectionError: "Извините, нет связи с сервером. Проверьте интернет.",
+      placeholder: "Спросите что-нибудь..."
+    },
+    nav: {
+      status: "Статус",
+      plan: "План",
+      list: "Список",
+      coach: "Коуч"
+    }
+  },
+  en: {
+    onboarding: {
+      step: "Step",
+      of: "of",
+      welcome: "Welcome to NutriPulse",
+      subtitle: "Let's set up your personal nutrition assistant.",
+      nameLabel: "What should we call you?",
+      namePlaceholder: "e.g., Alex",
+      goalsTitle: "Your Goals & Diet",
+      mainGoalLabel: "What is your main goal?",
+      goals: {
+        weightLoss: "Lose weight & eat regularly",
+        muscle: "Build muscle mass",
+        habits: "Maintain healthy habits",
+        energy: "Increase energy levels"
+      },
+      dietLabel: "Any dietary restrictions?",
+      dietPlaceholder: "e.g., Vegetarian, Nut allergy, Keto...",
+      intervalsTitle: "Intervals",
+      intervalsSubtitle: "How often do you want to eat?",
+      every: "Every",
+      hours: "hours",
+      scheduleTitle: "Daily Schedule",
+      scheduleSubtitle: "Set your sleep time so we don't disturb you.",
+      bedtime: "Bedtime (Sleep start)",
+      wakeTime: "Wake up (Breakfast)",
+      next: "Next",
+      start: "Start Journey"
+    },
+    dashboard: {
+      hello: "Hello",
+      subtitle: "Maintaining energy levels.",
+      notificationsOn: "Notifications on",
+      notificationsOff: "Turn on notifications",
+      breakfastIn: "Breakfast in",
+      nextMeal: "Next meal",
+      iAte: "I ate",
+      iAteBreakfast: "I ate breakfast",
+      urgent: "Please have a snack now!",
+      night: "Rest. See you in the morning!",
+      noPlan: "No active plan",
+      noPlanDesc: "Create a 3-day plan with 5-10 min recipes.",
+      createPlan: "Create plan",
+      creating: "Creating...",
+      planActive: "Plan active",
+      planActiveDesc: "You have recipes and a shopping list.",
+      newPlan: "New plan (3 days)",
+      streak: "Streak",
+      water: "Water",
+      waterNorm: "Normal",
+      days: "days"
+    },
+    meals: {
+      title: "Your 3-day Plan",
+      subtitle: "Quick recipes in 5-10 mins.",
+      day: "Day",
+      types: {
+        Breakfast: "Breakfast",
+        Lunch: "Lunch",
+        Dinner: "Dinner",
+        Snack: "Snack"
+      },
+      ingredients: "Ingredients",
+      instructions: "Instructions",
+      calories: "Approx. {cal} kcal",
+      noPlan: "No plan created",
+      noPlanDesc: "Create a plan on the dashboard to start.",
+      noMeals: "No meals scheduled for this day."
+    },
+    shopping: {
+      title: "Shopping List",
+      left: "Items left",
+      copy: "Copy list",
+      copied: "Copied!",
+      clear: "Clear",
+      empty: "List is empty",
+      emptyDesc: "Shopping list will appear here after creating a plan.",
+      updating: "Updating list...",
+      regenerating: "Regenerating menu...",
+      excludeBtn: "Exclude items? / I don't have these",
+      excludeTitle: "Exclude products",
+      excludeDesc: "Enter products you dislike or can't buy. We'll remember this and regenerate the plan.",
+      excludePlaceholder: "E.g. onion, garlic, expensive meat...",
+      regenerate: "Regenerate plan (3 days)"
+    },
+    chat: {
+      welcome: "Hi {name}! I'm your personal nutrition coach. I know your goal is: {goal}. How are you feeling today?",
+      error: "I'm having trouble answering right now. Try again?",
+      connectionError: "Sorry, no server connection. Check internet.",
+      placeholder: "Ask something..."
+    },
+    nav: {
+      status: "Status",
+      plan: "Plan",
+      list: "List",
+      coach: "Coach"
+    }
+  }
+};

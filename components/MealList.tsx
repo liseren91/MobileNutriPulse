@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Meal } from '../types';
 import { Clock, ChevronDown, ChevronUp, ChefHat, Flame, Calendar } from 'lucide-react';
+import { t } from '../translations';
 
 interface MealListProps {
   meals: Meal[];
+  language: 'ru' | 'en';
 }
 
-export const MealList: React.FC<MealListProps> = ({ meals }) => {
+export const MealList: React.FC<MealListProps> = ({ meals, language }) => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [activeDay, setActiveDay] = useState<number>(1);
+  const text = t[language].meals;
 
   const toggleExpand = (id: string) => {
     setExpandedId(expandedId === id ? null : id);
@@ -23,7 +26,6 @@ export const MealList: React.FC<MealListProps> = ({ meals }) => {
 
   const availableDays = Object.keys(mealsByDay).map(Number).sort((a, b) => a - b);
 
-  // Set initial active day if available
   useEffect(() => {
     if (availableDays.length > 0 && !availableDays.includes(activeDay)) {
       setActiveDay(availableDays[0]);
@@ -31,21 +33,15 @@ export const MealList: React.FC<MealListProps> = ({ meals }) => {
   }, [availableDays, activeDay]);
 
   const translateMealType = (type: string) => {
-    switch (type) {
-      case 'Breakfast': return 'Завтрак';
-      case 'Lunch': return 'Обед';
-      case 'Dinner': return 'Ужин';
-      case 'Snack': return 'Перекус';
-      default: return type;
-    }
+    return text.types[type as keyof typeof text.types] || type;
   };
 
   if (meals.length === 0) {
     return (
       <div className="p-8 text-center text-slate-500 mt-10">
         <ChefHat className="mx-auto mb-4 text-slate-300" size={64} />
-        <h2 className="text-lg font-semibold text-slate-700">План не создан</h2>
-        <p className="mt-2 text-sm">Создайте план на главной странице, чтобы начать.</p>
+        <h2 className="text-lg font-semibold text-slate-700">{text.noPlan}</h2>
+        <p className="mt-2 text-sm">{text.noPlanDesc}</p>
       </div>
     );
   }
@@ -57,9 +53,9 @@ export const MealList: React.FC<MealListProps> = ({ meals }) => {
         <div className="p-6 pb-2">
           <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
             <Calendar className="text-teal-600" /> 
-            Ваш план на 3 дня
+            {text.title}
           </h1>
-          <p className="text-slate-500 text-sm mt-1">Быстрые рецепты за 5-10 минут.</p>
+          <p className="text-slate-500 text-sm mt-1">{text.subtitle}</p>
         </div>
         
         <div className="flex px-4 gap-2 overflow-x-auto pb-4 scrollbar-hide">
@@ -73,7 +69,7 @@ export const MealList: React.FC<MealListProps> = ({ meals }) => {
                   : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
               }`}
             >
-              День {day}
+              {text.day} {day}
             </button>
           ))}
         </div>
@@ -115,7 +111,7 @@ export const MealList: React.FC<MealListProps> = ({ meals }) => {
                 
                 <div className="mb-4">
                   <h4 className="text-xs font-bold text-slate-900 uppercase mb-2 flex items-center gap-1">
-                    Ингредиенты
+                    {text.ingredients}
                   </h4>
                   <div className="flex flex-wrap gap-2">
                     {meal.ingredients.map((ing, idx) => (
@@ -127,7 +123,7 @@ export const MealList: React.FC<MealListProps> = ({ meals }) => {
                 </div>
 
                 <div>
-                  <h4 className="text-xs font-bold text-slate-900 uppercase mb-2">Инструкции</h4>
+                  <h4 className="text-xs font-bold text-slate-900 uppercase mb-2">{text.instructions}</h4>
                   <ol className="relative border-l border-slate-200 ml-2 space-y-4">
                     {meal.instructions.map((step, idx) => (
                       <li key={idx} className="pl-4 relative">
@@ -140,7 +136,7 @@ export const MealList: React.FC<MealListProps> = ({ meals }) => {
 
                 {meal.calories && (
                   <div className="mt-4 pt-4 border-t border-slate-200/50 flex items-center gap-1 text-xs text-slate-400 font-medium justify-end">
-                    <Flame size={14} className="text-orange-400" /> Ок. {meal.calories} ккал
+                    <Flame size={14} className="text-orange-400" /> {text.calories.replace('{cal}', meal.calories.toString())}
                   </div>
                 )}
               </div>
@@ -150,7 +146,7 @@ export const MealList: React.FC<MealListProps> = ({ meals }) => {
         
         {(!mealsByDay[activeDay] || mealsByDay[activeDay].length === 0) && (
            <div className="text-center py-10 text-slate-400">
-             <p>Нет запланированных приемов пищи на этот день.</p>
+             <p>{text.noMeals}</p>
            </div>
         )}
       </div>

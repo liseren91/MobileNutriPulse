@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Ingredient } from '../types';
 import { ShoppingBag, CheckSquare, Square, Trash2, Copy, RefreshCw, X, Ban } from 'lucide-react';
+import { t } from '../translations';
 
 interface ShoppingListProps {
   items: Ingredient[];
@@ -9,6 +10,7 @@ interface ShoppingListProps {
   onRegenerate: (exclusions: string) => void;
   isRegenerating: boolean;
   currentExclusions?: string;
+  language: 'ru' | 'en';
 }
 
 export const ShoppingList: React.FC<ShoppingListProps> = ({ 
@@ -17,18 +19,20 @@ export const ShoppingList: React.FC<ShoppingListProps> = ({
   clearAll, 
   onRegenerate,
   isRegenerating,
-  currentExclusions
+  currentExclusions,
+  language
 }) => {
   const [showRegenerate, setShowRegenerate] = useState(false);
   const [exclusions, setExclusions] = useState(currentExclusions || '');
   const [copied, setCopied] = useState(false);
+  const text = t[language].shopping;
 
   const completedCount = items.filter(i => i.checked).length;
   const progress = items.length > 0 ? (completedCount / items.length) * 100 : 0;
 
   const handleCopy = () => {
-    const text = items.map(i => `${i.checked ? '[x]' : '[ ]'} ${i.item} (${i.amount})`).join('\n');
-    navigator.clipboard.writeText(text);
+    const textStr = items.map(i => `${i.checked ? '[x]' : '[ ]'} ${i.item} (${i.amount})`).join('\n');
+    navigator.clipboard.writeText(textStr);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -44,8 +48,8 @@ export const ShoppingList: React.FC<ShoppingListProps> = ({
     return (
       <div className="p-8 text-center text-slate-500 mt-10 max-w-lg mx-auto">
         <ShoppingBag className="mx-auto mb-4 text-slate-300" size={64} />
-        <h2 className="text-lg font-semibold text-slate-700">Список пуст</h2>
-        <p>Список продуктов появится здесь после создания плана.</p>
+        <h2 className="text-lg font-semibold text-slate-700">{text.empty}</h2>
+        <p>{text.emptyDesc}</p>
       </div>
     );
   }
@@ -55,25 +59,25 @@ export const ShoppingList: React.FC<ShoppingListProps> = ({
       {/* Header */}
       <div className="flex justify-between items-end">
         <div>
-           <h1 className="text-2xl font-bold text-slate-800">Список покупок</h1>
+           <h1 className="text-2xl font-bold text-slate-800">{text.title}</h1>
            <p className="text-slate-500 text-sm">
-             {isRegenerating ? 'Обновляем список...' : `Осталось купить: ${items.length - completedCount}`}
+             {isRegenerating ? text.updating : `${text.left}: ${items.length - completedCount}`}
            </p>
         </div>
         <div className="flex gap-2">
           <button 
             onClick={handleCopy} 
             className="text-teal-600 p-2 hover:bg-teal-50 rounded-full transition-colors relative"
-            title="Скопировать список"
+            title={text.copy}
           >
             <Copy size={20} />
             {copied && (
-              <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-[10px] bg-slate-800 text-white px-2 py-1 rounded">
-                Скопировано!
+              <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-[10px] bg-slate-800 text-white px-2 py-1 rounded whitespace-nowrap">
+                {text.copied}
               </span>
             )}
           </button>
-          <button onClick={clearAll} className="text-rose-500 p-2 hover:bg-rose-50 rounded-full transition-colors" title="Очистить">
+          <button onClick={clearAll} className="text-rose-500 p-2 hover:bg-rose-50 rounded-full transition-colors" title={text.clear}>
             <Trash2 size={20} />
           </button>
         </div>
@@ -82,7 +86,7 @@ export const ShoppingList: React.FC<ShoppingListProps> = ({
       {isRegenerating ? (
         <div className="py-20 flex flex-col items-center text-slate-400 animate-pulse">
           <RefreshCw className="animate-spin mb-4" size={40} />
-          <p>Пересобираем меню и список покупок...</p>
+          <p>{text.regenerating}</p>
         </div>
       ) : (
         <>
@@ -127,23 +131,23 @@ export const ShoppingList: React.FC<ShoppingListProps> = ({
                 className="w-full py-3 px-4 rounded-xl border border-dashed border-slate-300 text-slate-500 hover:text-slate-700 hover:border-slate-400 hover:bg-slate-50 transition-all flex items-center justify-center gap-2 text-sm font-medium"
               >
                 <Ban size={16} />
-                Что-то исключить? / У меня нет этих продуктов
+                {text.excludeBtn}
               </button>
             ) : (
               <div className="bg-white p-4 rounded-2xl shadow-sm border border-orange-100 animate-fade-in">
                 <div className="flex justify-between items-center mb-2">
-                   <h3 className="text-sm font-bold text-slate-800">Исключить продукты</h3>
+                   <h3 className="text-sm font-bold text-slate-800">{text.excludeTitle}</h3>
                    <button onClick={() => setShowRegenerate(false)} className="text-slate-400 hover:text-slate-600">
                      <X size={16} />
                    </button>
                 </div>
                 <p className="text-xs text-slate-500 mb-3">
-                  Введите продукты, которые вы не любите или не можете купить. Мы запомним это и пересоздадим план.
+                  {text.excludeDesc}
                 </p>
                 <textarea
                   value={exclusions}
                   onChange={(e) => setExclusions(e.target.value)}
-                  placeholder="Например: лук, чеснок, дорогое мясо..."
+                  placeholder={text.excludePlaceholder}
                   className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-1 focus:ring-teal-500 outline-none resize-none h-20 mb-3"
                 />
                 <button 
@@ -152,7 +156,7 @@ export const ShoppingList: React.FC<ShoppingListProps> = ({
                   className="w-full bg-teal-600 text-white py-2.5 rounded-xl font-medium text-sm hover:bg-teal-700 disabled:opacity-50 flex justify-center items-center gap-2"
                 >
                   <RefreshCw size={16} />
-                  Пересоздать план (3 дня)
+                  {text.regenerate}
                 </button>
               </div>
             )}

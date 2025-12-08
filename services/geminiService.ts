@@ -9,13 +9,14 @@ const getAiClient = () => {
 
 export const generateMealPlan = async (profile: UserProfile): Promise<{ meals: Meal[], shoppingList: Ingredient[] }> => {
   const ai = getAiClient();
+  const lang = profile.language === 'en' ? 'ENGLISH' : 'RUSSIAN';
   
   const exclusions = profile.excludedIngredients 
     ? `STRICTLY EXCLUDE the following ingredients/foods: ${profile.excludedIngredients}.` 
     : '';
 
   const prompt = `
-    Generate a delicious 3-day meal plan in RUSSIAN language for a user with the following details:
+    Generate a delicious 3-day meal plan in ${lang} language for a user with the following details:
     - Dietary Preferences: ${profile.dietaryPreferences}
     - Goal: ${profile.goals}
     - CRITICAL CONSTRAINT: Every single meal must take ONLY 5-10 minutes to prepare.
@@ -23,10 +24,10 @@ export const generateMealPlan = async (profile: UserProfile): Promise<{ meals: M
     - Meal Types per day: Breakfast, Lunch, Dinner, Snack.
     ${exclusions}
     
-    Also generate a consolidated shopping list for these 3 days in RUSSIAN. 
+    Also generate a consolidated shopping list for these 3 days in ${lang}. 
     Ensure the shopping list is accurate so the user can buy everything in one trip.
     
-    IMPORTANT: The content (name, description, ingredients, instructions) MUST be in Russian.
+    IMPORTANT: The content (name, description, ingredients, instructions) MUST be in ${lang}.
     The 'type' field in the schema MUST remain one of the English enum values: "Breakfast", "Lunch", "Dinner", "Snack".
   `;
 
@@ -79,6 +80,8 @@ export const generateMealPlan = async (profile: UserProfile): Promise<{ meals: M
 
 export const chatWithNutritionist = async (history: { role: string, parts: { text: string }[] }[], newMessage: string, profile: UserProfile) => {
   const ai = getAiClient();
+  const lang = profile.language === 'en' ? 'ENGLISH' : 'RUSSIAN';
+
   const chat = ai.chats.create({
     model: "gemini-2.5-flash",
     history: history,
@@ -89,7 +92,7 @@ export const chatWithNutritionist = async (history: { role: string, parts: { tex
       User Dislikes/Exclusions: ${profile.excludedIngredients || 'None'}.
       Keep answers concise, encouraging, and actionable. 
       Always remind them that "done is better than perfect" regarding quick meals.
-      COMMUNICATE IN RUSSIAN LANGUAGE ONLY.`
+      COMMUNICATE IN ${lang} LANGUAGE ONLY.`
     }
   });
 

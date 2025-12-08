@@ -22,7 +22,10 @@ const App = () => {
     const savedShop = localStorage.getItem('nutripulse_shopping');
 
     if (savedProfile) {
-      setProfile(JSON.parse(savedProfile));
+      const parsedProfile = JSON.parse(savedProfile);
+      // Migration for old profiles without language
+      if (!parsedProfile.language) parsedProfile.language = 'ru';
+      setProfile(parsedProfile);
       setView(ViewState.DASHBOARD);
     }
     if (savedMeals) setMeals(JSON.parse(savedMeals));
@@ -80,8 +83,6 @@ const App = () => {
       const data = await generateMealPlan(updatedProfile);
       setMeals(data.meals);
       setShoppingList(data.shoppingList);
-      
-      // We stay on shopping list view, but data is refreshed
     } catch (e) {
       console.error("Failed regeneration", e);
       alert("Не удалось пересоздать план. Попробуйте позже.");
@@ -104,6 +105,8 @@ const App = () => {
     return <Onboarding onComplete={handleOnboardingComplete} />;
   }
 
+  const currentLang = profile.language || 'ru';
+
   return (
     <div className="bg-slate-50 min-h-screen font-sans text-slate-900">
       <main className="mx-auto w-full">
@@ -116,7 +119,7 @@ const App = () => {
             isLoadingPlan={isLoadingPlan}
           />
         )}
-        {view === ViewState.MEALS && <MealList meals={meals} />}
+        {view === ViewState.MEALS && <MealList meals={meals} language={currentLang} />}
         {view === ViewState.SHOPPING && (
           <ShoppingList 
             items={shoppingList} 
@@ -125,12 +128,13 @@ const App = () => {
             onRegenerate={handleRegenerateWithExclusions}
             isRegenerating={isLoadingPlan}
             currentExclusions={profile.excludedIngredients}
+            language={currentLang}
           />
         )}
         {view === ViewState.CHAT && <ChatCoach profile={profile} />}
       </main>
 
-      <Navigation currentView={view} setView={setView} />
+      <Navigation currentView={view} setView={setView} language={currentLang} />
     </div>
   );
 };
