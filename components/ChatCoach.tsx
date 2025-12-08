@@ -1,8 +1,9 @@
-import { Bot, Send, User } from "lucide-react";
-import React, { useEffect, useRef, useState } from "react";
-import { chatWithNutritionist } from "../services/geminiService";
-import { t } from "../translations";
-import { ChatMessage, UserProfile } from "../types";
+import React, { useState, useRef, useEffect } from 'react';
+import { ChatMessage, UserProfile } from '../types';
+import { chatWithNutritionist } from '../services/geminiService';
+import { Send, User } from 'lucide-react';
+import { t } from '../translations';
+import { Mascot } from './Mascot';
 
 interface ChatCoachProps {
   profile: UserProfile;
@@ -89,71 +90,64 @@ export const ChatCoach: React.FC<ChatCoachProps> = ({ profile }) => {
   };
 
   return (
-    <div className="flex flex-col h-screen max-w-lg mx-auto bg-slate-50 pt-safe">
-      <div
-        className="flex-1 overflow-y-auto p-4 space-y-4 pb-24"
-        ref={scrollRef}
-      >
+    <div className="flex flex-col h-screen max-w-lg mx-auto relative">
+      <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-40" ref={scrollRef}>
         {messages.map((msg) => {
           const isUser = msg.role === "user";
           return (
-            <div
-              key={msg.id}
-              className={`flex items-end gap-2 ${
-                isUser ? "flex-row-reverse" : "flex-row"
-              }`}
+            <div 
+              key={msg.id} 
+              className={`flex items-end gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
             >
-              <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                  isUser
-                    ? "bg-slate-200 text-slate-600"
-                    : "bg-teal-100 text-teal-600"
-                }`}
-              >
-                {isUser ? <User size={16} /> : <Bot size={16} />}
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 border-2 shadow-sm ${
+                isUser ? 'bg-slate-200 border-white text-slate-600' : 'bg-teal-50 border-teal-100'
+              }`}>
+                {isUser ? <User size={18} /> : 
+                // @ts-ignore
+                <Mascot mood="happy" size={32} />
+                }
               </div>
-              <div
-                className={`max-w-[80%] p-3 rounded-2xl text-sm leading-relaxed ${
-                  isUser
-                    ? "bg-slate-800 text-white rounded-br-none"
-                    : "bg-white border border-slate-200 text-slate-700 rounded-bl-none shadow-sm"
-                }`}
-              >
+              <div className={`max-w-[80%] p-4 rounded-[1.5rem] text-sm leading-relaxed shadow-sm ${
+                isUser 
+                  ? 'bg-slate-800 text-white rounded-br-none' 
+                  : 'bg-white border border-slate-100 text-slate-700 rounded-bl-none'
+              }`}>
                 {msg.text}
               </div>
             </div>
           );
         })}
         {isLoading && (
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center shrink-0">
-              <Bot size={16} className="text-teal-600" />
-            </div>
-            <div className="bg-white px-4 py-3 rounded-2xl rounded-bl-none shadow-sm border border-slate-200">
-              <div className="flex gap-1">
-                <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"></div>
-                <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce delay-75"></div>
-                <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce delay-150"></div>
-              </div>
-            </div>
+          <div className="flex items-center gap-3">
+             <div className="w-10 h-10 rounded-full bg-teal-50 border border-teal-100 flex items-center justify-center shrink-0 shadow-sm">
+                {/* @ts-ignore */}
+                <Mascot mood="thinking" size={32} />
+             </div>
+             <div className="bg-white px-5 py-4 rounded-[1.5rem] rounded-bl-none shadow-sm border border-slate-100">
+               <div className="flex gap-1.5">
+                 <div className="w-2 h-2 bg-slate-300 rounded-full animate-bounce"></div>
+                 <div className="w-2 h-2 bg-slate-300 rounded-full animate-bounce delay-75"></div>
+                 <div className="w-2 h-2 bg-slate-300 rounded-full animate-bounce delay-150"></div>
+               </div>
+             </div>
           </div>
         )}
       </div>
 
-      <div className="fixed bottom-16 left-0 right-0 p-4 bg-white border-t border-slate-200 max-w-lg mx-auto pb-safe">
-        <div className="flex gap-2">
+      <div className="fixed bottom-safe-nav left-0 right-0 p-4 max-w-lg mx-auto z-40">
+        <div className="glass rounded-full p-2 pr-2 pl-6 flex gap-3 shadow-xl shadow-slate-200/50 border border-white">
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSend()}
             placeholder={text.placeholder}
-            className="flex-1 bg-slate-100 border-none rounded-full px-4 py-3 focus:ring-2 focus:ring-teal-500 outline-none"
+            className="flex-1 bg-transparent border-none py-3 focus:ring-0 outline-none text-slate-800 placeholder:text-slate-400 font-medium"
           />
           <button
             onClick={handleSend}
             disabled={!input.trim() || isLoading}
-            className="bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white p-3 rounded-full transition-colors flex items-center justify-center"
+            className="bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white w-12 h-12 rounded-full transition-all flex items-center justify-center shadow-lg active:scale-95"
           >
             <Send size={20} />
           </button>

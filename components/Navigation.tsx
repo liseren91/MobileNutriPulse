@@ -20,24 +20,37 @@ export const Navigation: React.FC<NavigationProps> = ({ currentView, setView, la
   ];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 pb-safe z-50">
-      <div className="flex justify-around items-center h-16 max-w-lg mx-auto">
-        {navItems.map((item) => {
-          const isActive = currentView === item.view;
-          return (
-            <button
-              key={item.view}
-              onClick={() => setView(item.view)}
-              className={`flex flex-col items-center justify-center w-full h-full transition-colors ${
-                isActive ? 'text-teal-600' : 'text-slate-400 hover:text-slate-600'
-              }`}
-            >
-              <item.icon size={24} strokeWidth={isActive ? 2.5 : 2} />
-              <span className="text-[10px] mt-1 font-medium">{item.label}</span>
-            </button>
-          );
-        })}
-      </div>
+    <>
+    {/* Gradient Fade for content below nav */}
+    <div className="fixed bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-slate-50 via-slate-50/80 to-transparent pointer-events-none z-40"></div>
+    
+    <div className="fixed bottom-6 left-4 right-4 z-50 pb-safe">
+      <nav className="glass rounded-full shadow-2xl shadow-slate-200/50 max-w-lg mx-auto p-2">
+        <div className="flex justify-around items-center h-14">
+          {navItems.map((item) => {
+            const isActive = currentView === item.view;
+            return (
+              <button
+                key={item.view}
+                onClick={() => setView(item.view)}
+                className={`group relative flex flex-col items-center justify-center w-full h-full rounded-full transition-all duration-300 ${
+                  isActive ? '' : 'hover:bg-slate-50'
+                }`}
+              >
+                {/* Active Indicator Background */}
+                {isActive && (
+                  <span className="absolute inset-0 bg-slate-900 rounded-full scale-75 transition-transform duration-300 -z-10"></span>
+                )}
+                
+                <div className={`transition-all duration-300 transform ${isActive ? '-translate-y-0 text-white' : 'text-slate-400 group-hover:text-slate-600'}`}>
+                   <item.icon size={22} strokeWidth={isActive ? 2.5 : 2} fill={isActive ? "currentColor" : "none"} />
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
     </div>
+    </>
   );
 };
