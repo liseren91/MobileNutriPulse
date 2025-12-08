@@ -1,3 +1,5 @@
+import { Capacitor } from "@capacitor/core";
+import { LocalNotifications } from "@capacitor/local-notifications";
 import {
   AlertCircle,
   Bell,
@@ -56,15 +58,29 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const SLEEP_END_HOUR = BREAKFAST_HOUR;
 
   useEffect(() => {
-    if ("Notification" in window) {
-      if (Notification.permission === "granted") {
-        setNotificationsEnabled(true);
-      } else if (Notification.permission !== "denied") {
-        Notification.requestPermission().then((perm) => {
-          setNotificationsEnabled(perm === "granted");
-        });
+    const checkNotificationPermission = async () => {
+      if (Capacitor.isNativePlatform()) {
+        // For native platforms, use Capacitor Local Notifications
+        try {
+          const status = await LocalNotifications.checkPermissions();
+          setNotificationsEnabled(status.display === "granted");
+        } catch (e) {
+          console.error("Failed to check notification permissions", e);
+        }
+      } else {
+        // Fallback to browser notifications for web
+        if ("Notification" in window) {
+          if (Notification.permission === "granted") {
+            setNotificationsEnabled(true);
+          } else if (Notification.permission !== "denied") {
+            Notification.requestPermission().then((perm) => {
+              setNotificationsEnabled(perm === "granted");
+            });
+          }
+        }
       }
-    }
+    };
+    checkNotificationPermission();
   }, []);
 
   useEffect(() => {
@@ -134,21 +150,44 @@ export const Dashboard: React.FC<DashboardProps> = ({
         } else {
           setStatus("Urgent");
           if (notificationsEnabled && !hasNotifiedRef.current) {
-            try {
-              new Notification(
-                lang === "ru"
-                  ? "NutriPulse: Пора есть! 🍽️"
-                  : "NutriPulse: Time to eat! 🍽️",
-                {
-                  body: text.urgent,
-                  requireInteraction: true,
-                  silent: false,
+            (async () => {
+              try {
+                if (Capacitor.isNativePlatform()) {
+                  // Use Capacitor Local Notifications for native platforms
+                  await LocalNotifications.schedule({
+                    notifications: [
+                      {
+                        title:
+                          lang === "ru"
+                            ? "NutriPulse: Пора есть! 🍽️"
+                            : "NutriPulse: Time to eat! 🍽️",
+                        body: text.urgent,
+                        id: 1,
+                        sound: "default",
+                        attachments: undefined,
+                        actionTypeId: "",
+                        extra: undefined,
+                      },
+                    ],
+                  });
+                } else {
+                  // Fallback to browser notifications for web
+                  new Notification(
+                    lang === "ru"
+                      ? "NutriPulse: Пора есть! 🍽️"
+                      : "NutriPulse: Time to eat! 🍽️",
+                    {
+                      body: text.urgent,
+                      requireInteraction: true,
+                      silent: false,
+                    }
+                  );
                 }
-              );
-              hasNotifiedRef.current = true;
-            } catch (e) {
-              console.error("Notification failed", e);
-            }
+                hasNotifiedRef.current = true;
+              } catch (e) {
+                console.error("Notification failed", e);
+              }
+            })();
           }
         }
       } else {
@@ -211,10 +250,21 @@ export const Dashboard: React.FC<DashboardProps> = ({
     return () => clearInterval(interval);
   }, [hasPlan, meals, SLEEP_START_HOUR]);
 
-  const requestAccess = () => {
-    Notification.requestPermission().then((perm) =>
-      setNotificationsEnabled(perm === "granted")
-    );
+  const requestAccess = async () => {
+    if (Capacitor.isNativePlatform()) {
+      // Request permission for native platforms
+      try {
+        const status = await LocalNotifications.requestPermissions();
+        setNotificationsEnabled(status.display === "granted");
+      } catch (e) {
+        console.error("Failed to request notification permissions", e);
+      }
+    } else {
+      // Fallback to browser notifications for web
+      Notification.requestPermission().then((perm) =>
+        setNotificationsEnabled(perm === "granted")
+      );
+    }
   };
 
   const getStatusVisuals = () => {
