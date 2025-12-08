@@ -1,7 +1,16 @@
-import React, { useState } from 'react';
-import { Ingredient } from '../types';
-import { ShoppingBag, CheckSquare, Square, Trash2, Copy, RefreshCw, X, Ban } from 'lucide-react';
-import { t } from '../translations';
+import {
+  Ban,
+  CheckSquare,
+  Copy,
+  RefreshCw,
+  ShoppingBag,
+  Square,
+  Trash2,
+  X,
+} from "lucide-react";
+import React, { useState } from "react";
+import { t } from "../translations";
+import { Ingredient } from "../types";
 
 interface ShoppingListProps {
   items: Ingredient[];
@@ -10,28 +19,30 @@ interface ShoppingListProps {
   onRegenerate: (exclusions: string) => void;
   isRegenerating: boolean;
   currentExclusions?: string;
-  language: 'ru' | 'en';
+  language: "ru" | "en";
 }
 
-export const ShoppingList: React.FC<ShoppingListProps> = ({ 
-  items, 
-  toggleItem, 
-  clearAll, 
+export const ShoppingList: React.FC<ShoppingListProps> = ({
+  items,
+  toggleItem,
+  clearAll,
   onRegenerate,
   isRegenerating,
   currentExclusions,
-  language
+  language,
 }) => {
   const [showRegenerate, setShowRegenerate] = useState(false);
-  const [exclusions, setExclusions] = useState(currentExclusions || '');
+  const [exclusions, setExclusions] = useState(currentExclusions || "");
   const [copied, setCopied] = useState(false);
   const text = t[language].shopping;
 
-  const completedCount = items.filter(i => i.checked).length;
+  const completedCount = items.filter((i) => i.checked).length;
   const progress = items.length > 0 ? (completedCount / items.length) * 100 : 0;
 
   const handleCopy = () => {
-    const textStr = items.map(i => `${i.checked ? '[x]' : '[ ]'} ${i.item} (${i.amount})`).join('\n');
+    const textStr = items
+      .map((i) => `${i.checked ? "[x]" : "[ ]"} ${i.item} (${i.amount})`)
+      .join("\n");
     navigator.clipboard.writeText(textStr);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -55,18 +66,20 @@ export const ShoppingList: React.FC<ShoppingListProps> = ({
   }
 
   return (
-    <div className="p-6 pb-24 space-y-6 max-w-lg mx-auto">
+    <div className="p-6 pt-safe pb-24 space-y-6 max-w-lg mx-auto">
       {/* Header */}
       <div className="flex justify-between items-end">
         <div>
-           <h1 className="text-2xl font-bold text-slate-800">{text.title}</h1>
-           <p className="text-slate-500 text-sm">
-             {isRegenerating ? text.updating : `${text.left}: ${items.length - completedCount}`}
-           </p>
+          <h1 className="text-2xl font-bold text-slate-800">{text.title}</h1>
+          <p className="text-slate-500 text-sm">
+            {isRegenerating
+              ? text.updating
+              : `${text.left}: ${items.length - completedCount}`}
+          </p>
         </div>
         <div className="flex gap-2">
-          <button 
-            onClick={handleCopy} 
+          <button
+            onClick={handleCopy}
             className="text-teal-600 p-2 hover:bg-teal-50 rounded-full transition-colors relative"
             title={text.copy}
           >
@@ -77,7 +90,11 @@ export const ShoppingList: React.FC<ShoppingListProps> = ({
               </span>
             )}
           </button>
-          <button onClick={clearAll} className="text-rose-500 p-2 hover:bg-rose-50 rounded-full transition-colors" title={text.clear}>
+          <button
+            onClick={clearAll}
+            className="text-rose-500 p-2 hover:bg-rose-50 rounded-full transition-colors"
+            title={text.clear}
+          >
             <Trash2 size={20} />
           </button>
         </div>
@@ -92,8 +109,8 @@ export const ShoppingList: React.FC<ShoppingListProps> = ({
         <>
           {/* Progress Bar */}
           <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-teal-500 transition-all duration-300" 
+            <div
+              className="h-full bg-teal-500 transition-all duration-300"
               style={{ width: `${progress}%` }}
             ></div>
           </div>
@@ -101,18 +118,32 @@ export const ShoppingList: React.FC<ShoppingListProps> = ({
           {/* List */}
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 divide-y divide-slate-100">
             {items.map((item, idx) => (
-              <div 
+              <div
                 key={idx}
                 onClick={() => toggleItem(idx)}
                 className={`p-4 flex items-center gap-4 cursor-pointer transition-colors ${
-                  item.checked ? 'bg-slate-50' : 'hover:bg-slate-50'
+                  item.checked ? "bg-slate-50" : "hover:bg-slate-50"
                 }`}
               >
-                <div className={`text-slate-400 ${item.checked ? 'text-teal-500' : ''}`}>
-                  {item.checked ? <CheckSquare size={24} /> : <Square size={24} />}
+                <div
+                  className={`text-slate-400 ${
+                    item.checked ? "text-teal-500" : ""
+                  }`}
+                >
+                  {item.checked ? (
+                    <CheckSquare size={24} />
+                  ) : (
+                    <Square size={24} />
+                  )}
                 </div>
                 <div className="flex-1">
-                  <p className={`font-medium ${item.checked ? 'text-slate-400 line-through' : 'text-slate-800'}`}>
+                  <p
+                    className={`font-medium ${
+                      item.checked
+                        ? "text-slate-400 line-through"
+                        : "text-slate-800"
+                    }`}
+                  >
                     {item.item}
                   </p>
                   {item.amount && (
@@ -126,7 +157,7 @@ export const ShoppingList: React.FC<ShoppingListProps> = ({
           {/* Regenerate / Exclude Section */}
           <div className="pt-4">
             {!showRegenerate ? (
-              <button 
+              <button
                 onClick={() => setShowRegenerate(true)}
                 className="w-full py-3 px-4 rounded-xl border border-dashed border-slate-300 text-slate-500 hover:text-slate-700 hover:border-slate-400 hover:bg-slate-50 transition-all flex items-center justify-center gap-2 text-sm font-medium"
               >
@@ -136,10 +167,15 @@ export const ShoppingList: React.FC<ShoppingListProps> = ({
             ) : (
               <div className="bg-white p-4 rounded-2xl shadow-sm border border-orange-100 animate-fade-in">
                 <div className="flex justify-between items-center mb-2">
-                   <h3 className="text-sm font-bold text-slate-800">{text.excludeTitle}</h3>
-                   <button onClick={() => setShowRegenerate(false)} className="text-slate-400 hover:text-slate-600">
-                     <X size={16} />
-                   </button>
+                  <h3 className="text-sm font-bold text-slate-800">
+                    {text.excludeTitle}
+                  </h3>
+                  <button
+                    onClick={() => setShowRegenerate(false)}
+                    className="text-slate-400 hover:text-slate-600"
+                  >
+                    <X size={16} />
+                  </button>
                 </div>
                 <p className="text-xs text-slate-500 mb-3">
                   {text.excludeDesc}
@@ -150,7 +186,7 @@ export const ShoppingList: React.FC<ShoppingListProps> = ({
                   placeholder={text.excludePlaceholder}
                   className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-1 focus:ring-teal-500 outline-none resize-none h-20 mb-3"
                 />
-                <button 
+                <button
                   onClick={handleRegenerateClick}
                   disabled={!exclusions.trim()}
                   className="w-full bg-teal-600 text-white py-2.5 rounded-xl font-medium text-sm hover:bg-teal-700 disabled:opacity-50 flex justify-center items-center gap-2"
