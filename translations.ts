@@ -13,7 +13,7 @@ export const t = {
         weightLoss: "Похудеть и питаться регулярно",
         muscle: "Набрать мышечную массу",
         habits: "Поддерживать здоровые привычки",
-        energy: "Повысить уровень энергии"
+        energy: "Повысить уровень энергии",
       },
       dietLabel: "Есть ли ограничения в еде?",
       dietPlaceholder: "например, Вегетарианец, Аллергия на орехи...",
@@ -22,11 +22,12 @@ export const t = {
       every: "Каждые",
       hours: "часа(ов)",
       scheduleTitle: "Режим дня",
-      scheduleSubtitle: "Настройте время сна, чтобы мы не беспокоили вас ночью.",
+      scheduleSubtitle:
+        "Настройте время сна, чтобы мы не беспокоили вас ночью.",
       bedtime: "Отбой (начало сна)",
       wakeTime: "Завтрак (подъем)",
       next: "Далее",
-      start: "Начать путь"
+      start: "Начать путь",
     },
     dashboard: {
       hello: "Привет",
@@ -49,7 +50,8 @@ export const t = {
       streak: "Серия",
       water: "Вода",
       waterNorm: "В норме",
-      days: "дня"
+      days: "дня",
+      offPlanMeal: "Съел вне плана?",
     },
     meals: {
       title: "Ваш план на 3 дня",
@@ -59,14 +61,14 @@ export const t = {
         Breakfast: "Завтрак",
         Lunch: "Обед",
         Dinner: "Ужин",
-        Snack: "Перекус"
+        Snack: "Перекус",
       },
       ingredients: "Ингредиенты",
       instructions: "Инструкции",
       calories: "Ок. {cal} ккал",
       noPlan: "План не создан",
       noPlanDesc: "Создайте план на главной странице, чтобы начать.",
-      noMeals: "Нет запланированных приемов пищи на этот день."
+      noMeals: "Нет запланированных приемов пищи на этот день.",
     },
     shopping: {
       title: "Список покупок",
@@ -80,22 +82,24 @@ export const t = {
       regenerating: "Пересобираем меню...",
       excludeBtn: "Что-то исключить? / У меня нет этих продуктов",
       excludeTitle: "Исключить продукты",
-      excludeDesc: "Введите продукты, которые вы не любите или не можете купить. Мы запомним это и пересоздадим план.",
-      excludePlaceholder: "Например: лук, чеснок, дорогое мясо...",
-      regenerate: "Пересоздать план (3 дня)"
+      excludeDesc:
+        "Введите продукт, который вы не любите (например: тунец). Мы заменим только те блюда, где он используется.",
+      excludePlaceholder: "Например: тунец, лук, чеснок...",
+      regenerate: "Заменить блюда с этим продуктом",
     },
     chat: {
-      welcome: "Привет, {name}! Я твой персональный консультант по питанию. Я знаю, что твоя цель: {goal}. Как ты себя чувствуешь сегодня?",
+      welcome:
+        "Привет, {name}! Я твой персональный консультант по питанию. Я знаю, что твоя цель: {goal}. Как ты себя чувствуешь сегодня?",
       error: "Мне сейчас сложно ответить. Попробуйте еще раз?",
       connectionError: "Извините, нет связи с сервером. Проверьте интернет.",
-      placeholder: "Спросите что-нибудь..."
+      placeholder: "Спросите что-нибудь...",
     },
     nav: {
       status: "Статус",
       plan: "План",
       list: "Список",
-      coach: "Коуч"
-    }
+      coach: "Коуч",
+    },
   },
   en: {
     onboarding: {
@@ -111,7 +115,7 @@ export const t = {
         weightLoss: "Lose weight & eat regularly",
         muscle: "Build muscle mass",
         habits: "Maintain healthy habits",
-        energy: "Increase energy levels"
+        energy: "Increase energy levels",
       },
       dietLabel: "Any dietary restrictions?",
       dietPlaceholder: "e.g., Vegetarian, Nut allergy, Keto...",
@@ -124,7 +128,7 @@ export const t = {
       bedtime: "Bedtime (Sleep start)",
       wakeTime: "Wake up (Breakfast)",
       next: "Next",
-      start: "Start Journey"
+      start: "Start Journey",
     },
     dashboard: {
       hello: "Hello",
@@ -147,7 +151,8 @@ export const t = {
       streak: "Streak",
       water: "Water",
       waterNorm: "Normal",
-      days: "days"
+      days: "days",
+      offPlanMeal: "Ate outside plan?",
     },
     meals: {
       title: "Your 3-day Plan",
@@ -157,14 +162,14 @@ export const t = {
         Breakfast: "Breakfast",
         Lunch: "Lunch",
         Dinner: "Dinner",
-        Snack: "Snack"
+        Snack: "Snack",
       },
       ingredients: "Ingredients",
       instructions: "Instructions",
       calories: "Approx. {cal} kcal",
       noPlan: "No plan created",
       noPlanDesc: "Create a plan on the dashboard to start.",
-      noMeals: "No meals scheduled for this day."
+      noMeals: "No meals scheduled for this day.",
     },
     shopping: {
       title: "Shopping List",
@@ -178,21 +183,23 @@ export const t = {
       regenerating: "Regenerating menu...",
       excludeBtn: "Exclude items? / I don't have these",
       excludeTitle: "Exclude products",
-      excludeDesc: "Enter products you dislike or can't buy. We'll remember this and regenerate the plan.",
-      excludePlaceholder: "E.g. onion, garlic, expensive meat...",
-      regenerate: "Regenerate plan (3 days)"
+      excludeDesc:
+        "Enter an ingredient you dislike (e.g., tuna). We'll replace only meals that contain it.",
+      excludePlaceholder: "E.g. tuna, onion, garlic...",
+      regenerate: "Replace meals with this ingredient",
     },
     chat: {
-      welcome: "Hi {name}! I'm your personal nutrition coach. I know your goal is: {goal}. How are you feeling today?",
+      welcome:
+        "Hi {name}! I'm your personal nutrition coach. I know your goal is: {goal}. How are you feeling today?",
       error: "I'm having trouble answering right now. Try again?",
       connectionError: "Sorry, no server connection. Check internet.",
-      placeholder: "Ask something..."
+      placeholder: "Ask something...",
     },
     nav: {
       status: "Status",
       plan: "Plan",
       list: "List",
-      coach: "Coach"
-    }
-  }
+      coach: "Coach",
+    },
+  },
 };

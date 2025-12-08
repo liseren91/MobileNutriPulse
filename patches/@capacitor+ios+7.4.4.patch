@@ -1,0 +1,173 @@
+diff --git a/node_modules/@capacitor/ios/Capacitor/Capacitor/CAPBridgeViewController+CDVScreenOrientationDelegate.h b/node_modules/@capacitor/ios/Capacitor/Capacitor/CAPBridgeViewController+CDVScreenOrientationDelegate.h
+index aeda727..66c3bab 100644
+--- a/node_modules/@capacitor/ios/Capacitor/Capacitor/CAPBridgeViewController+CDVScreenOrientationDelegate.h
++++ b/node_modules/@capacitor/ios/Capacitor/Capacitor/CAPBridgeViewController+CDVScreenOrientationDelegate.h
+@@ -1,4 +1,5 @@
+ #import <Capacitor/Capacitor-Swift.h>
++#import <Cordova/CDVScreenOrientationDelegate.h>
+ 
+ @interface CAPBridgeViewController (CDVScreenOrientationDelegate) <CDVScreenOrientationDelegate>
+ 
+diff --git a/node_modules/@capacitor/ios/Capacitor/Capacitor/CAPBridgedPlugin.h b/node_modules/@capacitor/ios/Capacitor/Capacitor/CAPBridgedPlugin.h
+index a6f6324..3aca6e3 100644
+--- a/node_modules/@capacitor/ios/Capacitor/Capacitor/CAPBridgedPlugin.h
++++ b/node_modules/@capacitor/ios/Capacitor/Capacitor/CAPBridgedPlugin.h
+@@ -1,4 +1,4 @@
+-#import "CAPPluginMethod.h"
++#import <Capacitor/CAPPluginMethod.h>
+ 
+ #if defined(__cplusplus)
+ #define CAP_EXTERN extern "C" __attribute__((visibility("default")))
+diff --git a/node_modules/@capacitor/ios/Capacitor/Capacitor/CAPInstanceDescriptor.h b/node_modules/@capacitor/ios/Capacitor/Capacitor/CAPInstanceDescriptor.h
+index f477ef5..3e2100a 100644
+--- a/node_modules/@capacitor/ios/Capacitor/Capacitor/CAPInstanceDescriptor.h
++++ b/node_modules/@capacitor/ios/Capacitor/Capacitor/CAPInstanceDescriptor.h
+@@ -1,8 +1,8 @@
+ #ifndef CAPInstanceDescriptor_h
+ #define CAPInstanceDescriptor_h
+ 
+-@import UIKit;
+-@import Cordova;
++#import <UIKit/UIKit.h>
++#import <Cordova/CDVConfigParser.h>
+ 
+ typedef NS_ENUM(NSInteger, CAPInstanceType) {
+     CAPInstanceTypeFixed NS_SWIFT_NAME(fixed),
+diff --git a/node_modules/@capacitor/ios/Capacitor/Capacitor/CAPPluginMethod.h b/node_modules/@capacitor/ios/Capacitor/Capacitor/CAPPluginMethod.h
+index 8c07538..6a0a59f 100644
+--- a/node_modules/@capacitor/ios/Capacitor/Capacitor/CAPPluginMethod.h
++++ b/node_modules/@capacitor/ios/Capacitor/Capacitor/CAPPluginMethod.h
+@@ -1,5 +1,5 @@
+-#import "CAPPluginCall.h"
+-#import "CAPPlugin.h"
++#import <Capacitor/CAPPluginCall.h>
++#import <Capacitor/CAPPlugin.h>
+ 
+ typedef enum {
+   CAPPluginMethodArgumentNotNullable,
+diff --git a/node_modules/@capacitor/ios/CapacitorCordova/CapacitorCordova/Classes/Public/AppDelegate.h b/node_modules/@capacitor/ios/CapacitorCordova/CapacitorCordova/Classes/Public/AppDelegate.h
+index 17678ea..bea8c4e 100644
+--- a/node_modules/@capacitor/ios/CapacitorCordova/CapacitorCordova/Classes/Public/AppDelegate.h
++++ b/node_modules/@capacitor/ios/CapacitorCordova/CapacitorCordova/Classes/Public/AppDelegate.h
+@@ -1,5 +1,5 @@
+ #import <Foundation/Foundation.h>
+-#import "CDVViewController.h"
++#import <Cordova/CDVViewController.h>
+ 
+ @interface AppDelegate : NSObject
+ 
+diff --git a/node_modules/@capacitor/ios/CapacitorCordova/CapacitorCordova/Classes/Public/CDV.h b/node_modules/@capacitor/ios/CapacitorCordova/CapacitorCordova/Classes/Public/CDV.h
+index 8f8fc04..7062ffd 100644
+--- a/node_modules/@capacitor/ios/CapacitorCordova/CapacitorCordova/Classes/Public/CDV.h
++++ b/node_modules/@capacitor/ios/CapacitorCordova/CapacitorCordova/Classes/Public/CDV.h
+@@ -17,12 +17,12 @@
+  under the License.
+  */
+ 
+-#import "CDVAvailability.h"
+-#import "CDVPlugin.h"
+-#import "CDVPluginResult.h"
+-#import "CDVCommandDelegate.h"
+-#import "CDVInvokedUrlCommand.h"
+-#import "CDVViewController.h"
+-#import "CDVURLProtocol.h"
+-#import "CDVScreenOrientationDelegate.h"
+-#import "CDVWebViewProcessPoolFactory.h"
++#import <Cordova/CDVAvailability.h>
++#import <Cordova/CDVPlugin.h>
++#import <Cordova/CDVPluginResult.h>
++#import <Cordova/CDVCommandDelegate.h>
++#import <Cordova/CDVInvokedUrlCommand.h>
++#import <Cordova/CDVViewController.h>
++#import <Cordova/CDVURLProtocol.h>
++#import <Cordova/CDVScreenOrientationDelegate.h>
++#import <Cordova/CDVWebViewProcessPoolFactory.h>
+diff --git a/node_modules/@capacitor/ios/CapacitorCordova/CapacitorCordova/Classes/Public/CDVCommandDelegate.h b/node_modules/@capacitor/ios/CapacitorCordova/CapacitorCordova/Classes/Public/CDVCommandDelegate.h
+index 45869bd..7bbc3ab 100644
+--- a/node_modules/@capacitor/ios/CapacitorCordova/CapacitorCordova/Classes/Public/CDVCommandDelegate.h
++++ b/node_modules/@capacitor/ios/CapacitorCordova/CapacitorCordova/Classes/Public/CDVCommandDelegate.h
+@@ -17,7 +17,7 @@
+  under the License.
+  */
+ 
+-#import "CDVInvokedUrlCommand.h"
++#import <Cordova/CDVInvokedUrlCommand.h>
+ 
+ @class CDVPlugin;
+ @class CDVPluginResult;
+diff --git a/node_modules/@capacitor/ios/CapacitorCordova/CapacitorCordova/Classes/Public/CDVCommandDelegateImpl.h b/node_modules/@capacitor/ios/CapacitorCordova/CapacitorCordova/Classes/Public/CDVCommandDelegateImpl.h
+index f42654e..5bca083 100644
+--- a/node_modules/@capacitor/ios/CapacitorCordova/CapacitorCordova/Classes/Public/CDVCommandDelegateImpl.h
++++ b/node_modules/@capacitor/ios/CapacitorCordova/CapacitorCordova/Classes/Public/CDVCommandDelegateImpl.h
+@@ -18,9 +18,9 @@
+  */
+ 
+ #import <UIKit/UIKit.h>
+-#import "CDVCommandDelegate.h"
++#import <Cordova/CDVCommandDelegate.h>
+ #import <WebKit/WebKit.h>
+-#import "CDVPluginManager.h"
++#import <Cordova/CDVPluginManager.h>
+ 
+ @class CDVViewController;
+ @class CDVCommandQueue;
+diff --git a/node_modules/@capacitor/ios/CapacitorCordova/CapacitorCordova/Classes/Public/CDVPlugin+Resources.h b/node_modules/@capacitor/ios/CapacitorCordova/CapacitorCordova/Classes/Public/CDVPlugin+Resources.h
+index cc43b16..178ecb3 100644
+--- a/node_modules/@capacitor/ios/CapacitorCordova/CapacitorCordova/Classes/Public/CDVPlugin+Resources.h
++++ b/node_modules/@capacitor/ios/CapacitorCordova/CapacitorCordova/Classes/Public/CDVPlugin+Resources.h
+@@ -18,7 +18,7 @@
+  */
+ 
+ #import <UIKit/UIKit.h>
+-#import "CDVPlugin.h"
++#import <Cordova/CDVPlugin.h>
+ 
+ @interface CDVPlugin (CDVPluginResources)
+ 
+diff --git a/node_modules/@capacitor/ios/CapacitorCordova/CapacitorCordova/Classes/Public/CDVPlugin.h b/node_modules/@capacitor/ios/CapacitorCordova/CapacitorCordova/Classes/Public/CDVPlugin.h
+index 29ba4cd..59f074a 100644
+--- a/node_modules/@capacitor/ios/CapacitorCordova/CapacitorCordova/Classes/Public/CDVPlugin.h
++++ b/node_modules/@capacitor/ios/CapacitorCordova/CapacitorCordova/Classes/Public/CDVPlugin.h
+@@ -19,9 +19,9 @@
+ 
+ #import <Foundation/Foundation.h>
+ #import <UIKit/UIKit.h>
+-#import "CDVPluginResult.h"
+-#import "CDVCommandDelegate.h"
+-#import "CDVAvailability.h"
++#import <Cordova/CDVPluginResult.h>
++#import <Cordova/CDVCommandDelegate.h>
++#import <Cordova/CDVAvailability.h>
+ #import <WebKit/WebKit.h>
+ 
+ @interface UIView (org_apache_cordova_UIView_Extension)
+diff --git a/node_modules/@capacitor/ios/CapacitorCordova/CapacitorCordova/Classes/Public/CDVPluginManager.h b/node_modules/@capacitor/ios/CapacitorCordova/CapacitorCordova/Classes/Public/CDVPluginManager.h
+index b67fbba..f0dabbe 100644
+--- a/node_modules/@capacitor/ios/CapacitorCordova/CapacitorCordova/Classes/Public/CDVPluginManager.h
++++ b/node_modules/@capacitor/ios/CapacitorCordova/CapacitorCordova/Classes/Public/CDVPluginManager.h
+@@ -6,9 +6,9 @@
+ //
+ 
+ #import <Foundation/Foundation.h>
+-#import "CDVPlugin.h"
+-#import "CDVConfigParser.h"
+-#import "CDVCommandDelegate.h"
++#import <Cordova/CDVPlugin.h>
++#import <Cordova/CDVConfigParser.h>
++#import <Cordova/CDVCommandDelegate.h>
+ 
+ @interface CDVPluginManager : NSObject
+ 
+diff --git a/node_modules/@capacitor/ios/CapacitorCordova/CapacitorCordova/Classes/Public/CDVURLProtocol.h b/node_modules/@capacitor/ios/CapacitorCordova/CapacitorCordova/Classes/Public/CDVURLProtocol.h
+index 0561e04..129bfc0 100644
+--- a/node_modules/@capacitor/ios/CapacitorCordova/CapacitorCordova/Classes/Public/CDVURLProtocol.h
++++ b/node_modules/@capacitor/ios/CapacitorCordova/CapacitorCordova/Classes/Public/CDVURLProtocol.h
+@@ -18,7 +18,7 @@
+  */
+ 
+ #import <Foundation/Foundation.h>
+-#import "CDVAvailability.h"
++#import <Cordova/CDVAvailability.h>
+ 
+ @class CDVViewController;
+ 

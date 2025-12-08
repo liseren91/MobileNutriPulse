@@ -6,11 +6,13 @@ import {
   Play,
   RefreshCw,
   Sun,
+  UtensilsCrossed,
 } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import { t } from "../translations";
 import { UserProfile } from "../types";
 import { Mascot } from "./Mascot";
+import { OffPlanMeal } from "./OffPlanMeal";
 
 interface DashboardProps {
   profile: UserProfile;
@@ -33,6 +35,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     "Good"
   );
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [showOffPlanMeal, setShowOffPlanMeal] = useState(false);
   const hasNotifiedRef = useRef(false);
 
   const lang = profile.language || "ru";
@@ -356,6 +359,24 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Off-plan meal button */}
+      <button
+        onClick={() => setShowOffPlanMeal(true)}
+        className="w-full bg-orange-50 border-2 border-dashed border-orange-200 text-orange-700 py-4 rounded-2xl font-semibold hover:bg-orange-100 hover:border-orange-300 transition-all flex items-center justify-center gap-2 text-sm"
+      >
+        <UtensilsCrossed size={18} />
+        {text.offPlanMeal ||
+          (lang === "ru" ? "Съел вне плана?" : "Ate outside plan?")}
+      </button>
+
+      {showOffPlanMeal && (
+        <OffPlanMeal
+          profile={profile}
+          onClose={() => setShowOffPlanMeal(false)}
+          onMealAnalyzed={updateLastMeal}
+        />
+      )}
     </div>
   );
 };

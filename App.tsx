@@ -5,7 +5,10 @@ import { MealList } from "./components/MealList";
 import { Navigation } from "./components/Navigation";
 import { Onboarding } from "./components/Onboarding";
 import { ShoppingList } from "./components/ShoppingList";
-import { generateMealPlan } from "./services/geminiService";
+import {
+  generateMealPlan,
+  replaceMealsWithIngredient,
+} from "./services/geminiService";
 import { Ingredient, Meal, UserProfile, ViewState } from "./types";
 
 const App = () => {
@@ -72,21 +75,42 @@ const App = () => {
   };
 
   const handleRegenerateWithExclusions = async (exclusions: string) => {
-    if (!profile) return;
+    if (!profile || meals.length === 0) return;
 
-    // 1. Update Profile with new exclusions
-    const updatedProfile = { ...profile, excludedIngredients: exclusions };
-    setProfile(updatedProfile);
+    // Check if it's a single ingredient replacement (simple case: no commas, short text)
+    const isSingleIngredient =
+      !exclusions.includes(",") && exclusions.trim().split(/\s+/).length <= 3;
+    const lang = profile.language || "ru";
 
-    // 2. Trigger generation with updated profile
     setIsLoadingPlan(true);
     try {
-      const data = await generateMealPlan(updatedProfile);
-      setMeals(data.meals);
-      setShoppingList(data.shoppingList);
+      if (isSingleIngredient) {
+        // Replace only meals containing this ingredient
+        const ingredientToReplace = exclusions.trim();
+        const data = await replaceMealsWithIngredient(
+          meals,
+          ingredientToReplace,
+          profile
+        );
+        setMeals(data.meals);
+        if (data.shoppingList.length > 0) {
+          setShoppingList(data.shoppingList);
+        }
+      } else {
+        // Multiple exclusions or complex case - regenerate full plan
+        const updatedProfile = { ...profile, excludedIngredients: exclusions };
+        setProfile(updatedProfile);
+        const data = await generateMealPlan(updatedProfile);
+        setMeals(data.meals);
+        setShoppingList(data.shoppingList);
+      }
     } catch (e) {
       console.error("Failed regeneration", e);
-      alert("Не удалось пересоздать план. Попробуйте позже.");
+      const errorMsg =
+        lang === "ru"
+          ? "Не удалось пересоздать план. Попробуйте позже."
+          : "Failed to regenerate plan. Please try again later.";
+      alert(errorMsg);
     } finally {
       setIsLoadingPlan(false);
     }
