@@ -104,13 +104,21 @@ export const Insights: React.FC<InsightsProps> = ({
     });
   }, [history]);
 
-  // Calculate calorie balance (assuming 2000 kcal baseline for maintenance)
+  // Calculate calorie balance using profile calorieGoal if available, otherwise estimate from goals
   const calorieBalance = useMemo(() => {
-    const baseline = profile?.goals?.includes("weightLoss")
-      ? 1800
-      : profile?.goals?.includes("muscle")
-      ? 2200
-      : 2000;
+    // First priority: use profile calorieGoal
+    let baseline: number;
+    if (profile?.calorieGoal) {
+      baseline = profile.calorieGoal;
+    } else {
+      // Fallback: estimate from goals
+      baseline = profile?.goals?.includes("weightLoss")
+        ? 1800
+        : profile?.goals?.includes("muscle")
+        ? 2200
+        : 2000;
+    }
+
     const surplus = todayData.calories - baseline;
     const weeklySurplus =
       weeklyData.reduce((sum, day) => sum + day.calories, 0) - baseline * 7;
@@ -146,8 +154,35 @@ export const Insights: React.FC<InsightsProps> = ({
   const maxCarbs = getMaxValue(weeklyData, "carbs");
   const maxFat = getMaxValue(weeklyData, "fat");
 
-  // Goals derived from user's plan (day 1). Fallback to defaults if missing.
+  // Goals derived from user's profile (calorieGoal and macroDistribution).
+  // Fallback to plan (day 1) if profile goals not set. Fallback to defaults if missing.
   const goals = useMemo(() => {
+    // First priority: use profile settings if available
+    if (profile?.calorieGoal) {
+      const caloriesTarget = profile.calorieGoal;
+      const macroDist = profile.macroDistribution || {
+        protein: 30,
+        carbs: 40,
+        fat: 30,
+      };
+
+      const proteinTarget = Math.round(
+        (caloriesTarget * macroDist.protein) / 100 / 4
+      );
+      const carbsTarget = Math.round(
+        (caloriesTarget * macroDist.carbs) / 100 / 4
+      );
+      const fatTarget = Math.round((caloriesTarget * macroDist.fat) / 100 / 9);
+
+      return {
+        calories: caloriesTarget,
+        protein: proteinTarget,
+        carbs: carbsTarget,
+        fat: fatTarget,
+      };
+    }
+
+    // Second priority: derive from user's plan (day 1)
     const PLAN_DAY = 1;
     const dayMeals = meals.filter((m) => m.day === PLAN_DAY);
     const planCalories = dayMeals.reduce(
@@ -155,11 +190,43 @@ export const Insights: React.FC<InsightsProps> = ({
       0
     );
 
-    const caloriesTarget = planCalories > 0 ? planCalories : 2000;
-    // Simple macro split based on calories target: P 30%, C 40%, F 30%
-    const proteinTarget = Math.round((caloriesTarget * 0.3) / 4);
-    const carbsTarget = Math.round((caloriesTarget * 0.4) / 4);
-    const fatTarget = Math.round((caloriesTarget * 0.3) / 9);
+    if (planCalories > 0) {
+      // Use profile macro distribution if available, otherwise default split
+      const macroDist = profile?.macroDistribution || {
+        protein: 30,
+        carbs: 40,
+        fat: 30,
+      };
+      const proteinTarget = Math.round(
+        (planCalories * macroDist.protein) / 100 / 4
+      );
+      const carbsTarget = Math.round(
+        (planCalories * macroDist.carbs) / 100 / 4
+      );
+      const fatTarget = Math.round((planCalories * macroDist.fat) / 100 / 9);
+
+      return {
+        calories: planCalories,
+        protein: proteinTarget,
+        carbs: carbsTarget,
+        fat: fatTarget,
+      };
+    }
+
+    // Fallback: defaults
+    const caloriesTarget = 2000;
+    const macroDist = profile?.macroDistribution || {
+      protein: 30,
+      carbs: 40,
+      fat: 30,
+    };
+    const proteinTarget = Math.round(
+      (caloriesTarget * macroDist.protein) / 100 / 4
+    );
+    const carbsTarget = Math.round(
+      (caloriesTarget * macroDist.carbs) / 100 / 4
+    );
+    const fatTarget = Math.round((caloriesTarget * macroDist.fat) / 100 / 9);
 
     return {
       calories: caloriesTarget,
@@ -167,7 +234,7 @@ export const Insights: React.FC<InsightsProps> = ({
       carbs: carbsTarget,
       fat: fatTarget,
     };
-  }, [meals]);
+  }, [meals, profile]);
 
   const goalData = [
     {

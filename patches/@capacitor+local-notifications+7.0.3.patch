@@ -1,0 +1,22 @@
+diff --git a/node_modules/@capacitor/local-notifications/ios/Sources/LocalNotificationsPlugin/LocalNotificationsHandler.swift b/node_modules/@capacitor/local-notifications/ios/Sources/LocalNotificationsPlugin/LocalNotificationsHandler.swift
+index e0bf257..21acc6d 100644
+--- a/node_modules/@capacitor/local-notifications/ios/Sources/LocalNotificationsPlugin/LocalNotificationsHandler.swift
++++ b/node_modules/@capacitor/local-notifications/ios/Sources/LocalNotificationsPlugin/LocalNotificationsHandler.swift
+@@ -11,7 +11,7 @@ public class LocalNotificationsHandler: NSObject, NotificationHandlerProtocol {
+ 
+     public func requestPermissions(with completion: ((Bool, Error?) -> Void)? = nil) {
+         let center = UNUserNotificationCenter.current()
+-        center.requestAuthorization(options: [.badge, .alert, .sound]) { (granted, error) in
++        center.requestAuthorization(options: [.badge, .sound]) { (granted, error) in
+             completion?(granted, error)
+         }
+     }
+@@ -38,7 +38,8 @@ public class LocalNotificationsHandler: NSObject, NotificationHandlerProtocol {
+         return [
+             .badge,
+             .sound,
+-            .alert
++            .banner,
++            .list
+         ]
+     }
