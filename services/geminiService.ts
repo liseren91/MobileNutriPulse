@@ -7,6 +7,193 @@ const getAiClient = () => {
   return new GoogleGenAI({ apiKey });
 };
 
+// ========== Constants ==========
+
+const MEAL_SCHEMA = {
+  type: Type.OBJECT,
+  properties: {
+    id: { type: Type.STRING },
+    day: { type: Type.INTEGER },
+    type: {
+      type: Type.STRING,
+      enum: ["Breakfast", "Lunch", "Dinner", "Snack"],
+    },
+    name: { type: Type.STRING },
+    description: { type: Type.STRING },
+    prepTime: { type: Type.STRING },
+    ingredients: { type: Type.ARRAY, items: { type: Type.STRING } },
+    instructions: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+    },
+    calories: { type: Type.INTEGER },
+  },
+};
+
+const SHOPPING_LIST_SCHEMA = {
+  type: Type.ARRAY,
+  items: {
+    type: Type.OBJECT,
+    properties: {
+      item: { type: Type.STRING },
+      amount: { type: Type.STRING },
+      checked: { type: Type.BOOLEAN },
+    },
+  },
+};
+
+const MEAL_PLAN_RESPONSE_SCHEMA = {
+  type: Type.OBJECT,
+  properties: {
+    meals: {
+      type: Type.ARRAY,
+      items: MEAL_SCHEMA,
+    },
+    shoppingList: SHOPPING_LIST_SCHEMA,
+  },
+};
+
+const MACRONUTRIENTS_SCHEMA = {
+  type: Type.OBJECT,
+  properties: {
+    protein: { type: Type.NUMBER },
+    carbs: { type: Type.NUMBER },
+    fat: { type: Type.NUMBER },
+  },
+};
+
+const SYSTEM_INSTRUCTION_OFF_PLAN = `You are a supportive, kind, but honest nutritionist. You understand that people sometimes eat outside their plan due to time constraints, cost, or convenience. You provide practical, non-judgmental advice.`;
+
+const SYSTEM_INSTRUCTION_CHAT = (
+  profile: UserProfile,
+  lang: string
+) => `You are a supportive, kind, but strict nutritionist. 
+      The user's goal is: ${profile.goals}.
+      They struggle with remembering to eat and eating regularly.
+      User Dislikes/Exclusions: ${profile.excludedIngredients || "None"}.
+      Keep answers concise, encouraging, and actionable. 
+      Always remind them that "done is better than perfect" regarding quick meals.
+      COMMUNICATE IN ${lang} LANGUAGE ONLY.`;
+
+// ========== Helper Functions ==========
+
+const getOffPlanMealAnalysisPrompt = (
+  mealDescription: string | null,
+  isFromPhoto: boolean,
+  profile: UserProfile,
+  lang: string
+): string => {
+  const mealContext = isFromPhoto
+    ? "They sent a photo of their meal."
+    : `They described: "${mealDescription}"`;
+
+  const photoIdentification = isFromPhoto
+    ? `2. Identify what food is in the photo - describe what you see (e.g., "I see a burger with fries", "I see pizza", "I see a salad with chicken")\n    \n    3.`
+    : "2.";
+
+  return `The user ate something outside of their meal plan. ${mealContext}
+
+    Analyze this meal${
+      isFromPhoto ? " from the photo" : ""
+    } and provide feedback in ${lang} language. Be supportive, kind, and understanding:
+    
+    1. ALWAYS start by praising them for eating - acknowledge that eating is important and they did the right thing by eating something, even if it wasn't ideal. Say something like "Хорошо, что ты поел(а)!" or "Good that you ate!"
+    
+    ${photoIdentification} Show understanding - acknowledge that sometimes there's no time to cook, or they were too tired, or healthy delivery is slow/expensive. Be empathetic.
+    
+    ${
+      isFromPhoto ? "4" : "3"
+    }. Provide practical, specific recommendations for next time:
+       - If ${
+         isFromPhoto ? "you see" : "they ate"
+       } fast food (like McDonald's, Burger King): suggest better street food options (e.g., "может стоило скушать гирос без соусов?" or "maybe you could have eaten a gyro without sauces?")
+       - If ${
+         isFromPhoto ? "you see" : "they ordered"
+       } delivery food: suggest healthier but still convenient options
+       - If ${
+         isFromPhoto ? "you see" : "they grabbed"
+       } something from a bakery: suggest better bakery options with more protein/vegetables
+       - Give 1-2 specific, actionable alternatives that are realistic for when they're in a hurry or don't want to cook
+    
+    ${
+      isFromPhoto ? "5" : "4"
+    }. Be encouraging - remind them that one meal doesn't ruin progress and that consistency matters more than perfection
+    
+    ${
+      isFromPhoto ? "6" : "5"
+    }. Keep it friendly and conversational (2-3 short paragraphs max)
+    
+    The user's goal is: ${profile.goals}
+    Their dietary preferences: ${profile.dietaryPreferences}
+    
+    COMMUNICATE IN ${lang} LANGUAGE ONLY. Use a warm, supportive tone like a caring friend who understands their situation.`;
+};
+
+const getCaloriesEstimationPrompt = (
+  mealDescription: string | null,
+  isFromPhoto: boolean
+): string => {
+  if (isFromPhoto) {
+    return `The user sent a photo of their meal. 
+
+    Look at the photo and estimate the approximate calories for this meal. Return ONLY a number (no text, no explanation, just the number).
+    
+    Be realistic - if it's fast food like a Big Mac, estimate around 500-600 kcal. If it's a pizza slice, estimate 200-300 kcal. If it's a full meal, estimate based on typical portions you can see in the photo.
+    
+    Consider the portion size visible in the photo.
+    
+    Return ONLY the number, nothing else.`;
+  }
+
+  return `The user ate: "${mealDescription}"
+
+    Estimate the approximate calories for this meal. Return ONLY a number (no text, no explanation, just the number).
+    
+    Be realistic - if it's fast food like a Big Mac, estimate around 500-600 kcal. If it's a pizza slice, estimate 200-300 kcal. If it's a full meal, estimate based on typical portions.
+    
+    Return ONLY the number, nothing else.`;
+};
+
+const getMacronutrientsPrompt = (
+  mealDescription: string | null,
+  calories: number,
+  isFromPhoto: boolean
+): string => {
+  const mealContext = isFromPhoto
+    ? "Look at this photo of food. The user ate this meal."
+    : `The user ate: "${mealDescription}"`;
+
+  const estimationContext = isFromPhoto
+    ? "based on what you see in the photo"
+    : "";
+
+  return `${mealContext}
+    Total calories: ${calories} kcal
+
+    Estimate the macronutrients (protein, carbs, fat) for this meal in grams ${estimationContext}.
+    Return ONLY a JSON object with this exact structure:
+    {
+      "protein": <number in grams>,
+      "carbs": <number in grams>,
+      "fat": <number in grams>
+    }
+    
+    Make sure the total calories match approximately:
+    - Protein: 4 kcal per gram
+    - Carbs: 4 kcal per gram
+    - Fat: 9 kcal per gram
+    
+    Total should be approximately ${calories} kcal (allow ±10% variance).
+    
+    Return ONLY the JSON object, nothing else.`;
+};
+
+const getDefaultMacronutrients = (calories: number): Macronutrients => ({
+  protein: Math.round((calories * 0.15) / 4), // 15% protein
+  carbs: Math.round((calories * 0.55) / 4), // 55% carbs
+  fat: Math.round((calories * 0.3) / 9), // 30% fat
+});
+
 export const generateMealPlan = async (
   profile: UserProfile
 ): Promise<{ meals: Meal[]; shoppingList: Ingredient[] }> => {
@@ -38,45 +225,7 @@ export const generateMealPlan = async (
     contents: prompt,
     config: {
       responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          meals: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                id: { type: Type.STRING },
-                day: { type: Type.INTEGER },
-                type: {
-                  type: Type.STRING,
-                  enum: ["Breakfast", "Lunch", "Dinner", "Snack"],
-                },
-                name: { type: Type.STRING },
-                description: { type: Type.STRING },
-                prepTime: { type: Type.STRING },
-                ingredients: { type: Type.ARRAY, items: { type: Type.STRING } },
-                instructions: {
-                  type: Type.ARRAY,
-                  items: { type: Type.STRING },
-                },
-                calories: { type: Type.INTEGER },
-              },
-            },
-          },
-          shoppingList: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                item: { type: Type.STRING },
-                amount: { type: Type.STRING },
-                checked: { type: Type.BOOLEAN },
-              },
-            },
-          },
-        },
-      },
+      responseSchema: MEAL_PLAN_RESPONSE_SCHEMA,
     },
   });
 
@@ -136,45 +285,7 @@ export const replaceMealsWithIngredient = async (
     contents: prompt,
     config: {
       responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          meals: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                id: { type: Type.STRING },
-                day: { type: Type.INTEGER },
-                type: {
-                  type: Type.STRING,
-                  enum: ["Breakfast", "Lunch", "Dinner", "Snack"],
-                },
-                name: { type: Type.STRING },
-                description: { type: Type.STRING },
-                prepTime: { type: Type.STRING },
-                ingredients: { type: Type.ARRAY, items: { type: Type.STRING } },
-                instructions: {
-                  type: Type.ARRAY,
-                  items: { type: Type.STRING },
-                },
-                calories: { type: Type.INTEGER },
-              },
-            },
-          },
-          shoppingList: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                item: { type: Type.STRING },
-                amount: { type: Type.STRING },
-                checked: { type: Type.BOOLEAN },
-              },
-            },
-          },
-        },
-      },
+      responseSchema: MEAL_PLAN_RESPONSE_SCHEMA,
     },
   });
 
@@ -194,34 +305,18 @@ export const analyzeOffPlanMeal = async (
   const ai = getAiClient();
   const lang = profile.language === "en" ? "ENGLISH" : "RUSSIAN";
 
-  const prompt = `The user ate something outside of their meal plan. They described: "${mealDescription}"
-
-    Analyze this meal and provide feedback in ${lang} language. Be supportive, kind, and understanding:
-    
-    1. ALWAYS start by praising them for eating - acknowledge that eating is important and they did the right thing by eating something, even if it wasn't ideal. Say something like "Хорошо, что ты поел(а)!" or "Good that you ate!"
-    
-    2. Show understanding - acknowledge that sometimes there's no time to cook, or they were too tired, or healthy delivery is slow/expensive. Be empathetic.
-    
-    3. Provide practical, specific recommendations for next time:
-       - If they ate fast food (like McDonald's, Burger King): suggest better street food options (e.g., "может стоило скушать гирос без соусов?" or "maybe you could have eaten a gyro without sauces?")
-       - If they ordered delivery: suggest healthier but still convenient options
-       - If they grabbed something from a bakery: suggest better bakery options with more protein/vegetables
-       - Give 1-2 specific, actionable alternatives that are realistic for when they're in a hurry or don't want to cook
-    
-    4. Be encouraging - remind them that one meal doesn't ruin progress and that consistency matters more than perfection
-    
-    5. Keep it friendly and conversational (2-3 short paragraphs max)
-    
-    The user's goal is: ${profile.goals}
-    Their dietary preferences: ${profile.dietaryPreferences}
-    
-    COMMUNICATE IN ${lang} LANGUAGE ONLY. Use a warm, supportive tone like a caring friend who understands their situation.`;
+  const prompt = getOffPlanMealAnalysisPrompt(
+    mealDescription,
+    false,
+    profile,
+    lang
+  );
 
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash",
     contents: prompt,
     config: {
-      systemInstruction: `You are a supportive, kind, but honest nutritionist. You understand that people sometimes eat outside their plan due to time constraints, cost, or convenience. You provide practical, non-judgmental advice.`,
+      systemInstruction: SYSTEM_INSTRUCTION_OFF_PLAN,
     },
   });
 
@@ -240,13 +335,7 @@ export const estimateMealCalories = async (
   const ai = getAiClient();
   const lang = profile.language === "en" ? "ENGLISH" : "RUSSIAN";
 
-  const prompt = `The user ate: "${mealDescription}"
-
-    Estimate the approximate calories for this meal. Return ONLY a number (no text, no explanation, just the number).
-    
-    Be realistic - if it's fast food like a Big Mac, estimate around 500-600 kcal. If it's a pizza slice, estimate 200-300 kcal. If it's a full meal, estimate based on typical portions.
-    
-    Return ONLY the number, nothing else.`;
+  const prompt = getCaloriesEstimationPrompt(mealDescription, false);
 
   try {
     const response = await ai.models.generateContent({
@@ -305,30 +394,7 @@ export const analyzeOffPlanMealFromPhoto = async (
   const ai = getAiClient();
   const lang = profile.language === "en" ? "ENGLISH" : "RUSSIAN";
 
-  const prompt = `The user ate something outside of their meal plan. They sent a photo of their meal.
-
-    Analyze this meal from the photo and provide feedback in ${lang} language. Be supportive, kind, and understanding:
-    
-    1. ALWAYS start by praising them for eating - acknowledge that eating is important and they did the right thing by eating something, even if it wasn't ideal. Say something like "Хорошо, что ты поел(а)!" or "Good that you ate!"
-    
-    2. Identify what food is in the photo - describe what you see (e.g., "I see a burger with fries", "I see pizza", "I see a salad with chicken")
-    
-    3. Show understanding - acknowledge that sometimes there's no time to cook, or they were too tired, or healthy delivery is slow/expensive. Be empathetic.
-    
-    4. Provide practical, specific recommendations for next time:
-       - If you see fast food: suggest better street food options (e.g., "может стоило скушать гирос без соусов?" or "maybe you could have eaten a gyro without sauces?")
-       - If you see delivery food: suggest healthier but still convenient options
-       - If you see bakery items: suggest better bakery options with more protein/vegetables
-       - Give 1-2 specific, actionable alternatives that are realistic for when they're in a hurry or don't want to cook
-    
-    5. Be encouraging - remind them that one meal doesn't ruin progress and that consistency matters more than perfection
-    
-    6. Keep it friendly and conversational (2-3 short paragraphs max)
-    
-    The user's goal is: ${profile.goals}
-    Their dietary preferences: ${profile.dietaryPreferences}
-    
-    COMMUNICATE IN ${lang} LANGUAGE ONLY. Use a warm, supportive tone like a caring friend who understands their situation.`;
+  const prompt = getOffPlanMealAnalysisPrompt(null, true, profile, lang);
 
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash",
@@ -347,7 +413,7 @@ export const analyzeOffPlanMealFromPhoto = async (
       },
     ],
     config: {
-      systemInstruction: `You are a supportive, kind, but honest nutritionist. You understand that people sometimes eat outside their plan due to time constraints, cost, or convenience. You provide practical, non-judgmental advice.`,
+      systemInstruction: SYSTEM_INSTRUCTION_OFF_PLAN,
     },
   });
 
@@ -367,15 +433,7 @@ export const estimateMealCaloriesFromPhoto = async (
   const ai = getAiClient();
   const lang = profile.language === "en" ? "ENGLISH" : "RUSSIAN";
 
-  const prompt = `The user sent a photo of their meal. 
-
-    Look at the photo and estimate the approximate calories for this meal. Return ONLY a number (no text, no explanation, just the number).
-    
-    Be realistic - if it's fast food like a Big Mac, estimate around 500-600 kcal. If it's a pizza slice, estimate 200-300 kcal. If it's a full meal, estimate based on typical portions you can see in the photo.
-    
-    Consider the portion size visible in the photo.
-    
-    Return ONLY the number, nothing else.`;
+  const prompt = getCaloriesEstimationPrompt(null, true);
 
   try {
     const response = await ai.models.generateContent({
@@ -452,10 +510,10 @@ export const identifyMealFromPhoto = async (
       },
     });
 
-    return response.text?.trim() || (lang === "en" ? "Food" : "Еда");
+    return response.text?.trim() || (lang === "ENGLISH" ? "Food" : "Еда");
   } catch (error) {
     console.error("Failed to identify meal from photo", error);
-    return lang === "en" ? "Food" : "Еда";
+    return lang === "ENGLISH" ? "Food" : "Еда";
   }
 };
 
@@ -467,25 +525,7 @@ export const analyzeMacronutrients = async (
   const ai = getAiClient();
   const lang = profile.language === "en" ? "ENGLISH" : "RUSSIAN";
 
-  const prompt = `The user ate: "${mealDescription}"
-    Total calories: ${calories} kcal
-
-    Estimate the macronutrients (protein, carbs, fat) for this meal in grams.
-    Return ONLY a JSON object with this exact structure:
-    {
-      "protein": <number in grams>,
-      "carbs": <number in grams>,
-      "fat": <number in grams>
-    }
-    
-    Make sure the total calories match approximately:
-    - Protein: 4 kcal per gram
-    - Carbs: 4 kcal per gram
-    - Fat: 9 kcal per gram
-    
-    Total should be approximately ${calories} kcal (allow ±10% variance).
-    
-    Return ONLY the JSON object, nothing else.`;
+  const prompt = getMacronutrientsPrompt(mealDescription, calories, false);
 
   try {
     const response = await ai.models.generateContent({
@@ -493,14 +533,7 @@ export const analyzeMacronutrients = async (
       contents: prompt,
       config: {
         responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            protein: { type: Type.NUMBER },
-            carbs: { type: Type.NUMBER },
-            fat: { type: Type.NUMBER },
-          },
-        },
+        responseSchema: MACRONUTRIENTS_SCHEMA,
       },
     });
 
@@ -515,12 +548,7 @@ export const analyzeMacronutrients = async (
     return null;
   } catch (error) {
     console.error("Failed to analyze macronutrients", error);
-    // Fallback: estimate based on calories
-    return {
-      protein: Math.round((calories * 0.15) / 4), // 15% protein
-      carbs: Math.round((calories * 0.55) / 4), // 55% carbs
-      fat: Math.round((calories * 0.3) / 9), // 30% fat
-    };
+    return getDefaultMacronutrients(calories);
   }
 };
 
@@ -533,25 +561,7 @@ export const analyzeMacronutrientsFromPhoto = async (
   const ai = getAiClient();
   const lang = profile.language === "en" ? "ENGLISH" : "RUSSIAN";
 
-  const prompt = `Look at this photo of food. The user ate this meal.
-    Total calories: ${calories} kcal
-
-    Estimate the macronutrients (protein, carbs, fat) for this meal in grams based on what you see in the photo.
-    Return ONLY a JSON object with this exact structure:
-    {
-      "protein": <number in grams>,
-      "carbs": <number in grams>,
-      "fat": <number in grams>
-    }
-    
-    Make sure the total calories match approximately:
-    - Protein: 4 kcal per gram
-    - Carbs: 4 kcal per gram
-    - Fat: 9 kcal per gram
-    
-    Total should be approximately ${calories} kcal (allow ±10% variance).
-    
-    Return ONLY the JSON object, nothing else.`;
+  const prompt = getMacronutrientsPrompt(null, calories, true);
 
   try {
     const response = await ai.models.generateContent({
@@ -572,14 +582,7 @@ export const analyzeMacronutrientsFromPhoto = async (
       ],
       config: {
         responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            protein: { type: Type.NUMBER },
-            carbs: { type: Type.NUMBER },
-            fat: { type: Type.NUMBER },
-          },
-        },
+        responseSchema: MACRONUTRIENTS_SCHEMA,
       },
     });
 
@@ -594,12 +597,7 @@ export const analyzeMacronutrientsFromPhoto = async (
     return null;
   } catch (error) {
     console.error("Failed to analyze macronutrients from photo", error);
-    // Fallback: estimate based on calories
-    return {
-      protein: Math.round((calories * 0.15) / 4), // 15% protein
-      carbs: Math.round((calories * 0.55) / 4), // 55% carbs
-      fat: Math.round((calories * 0.3) / 9), // 30% fat
-    };
+    return getDefaultMacronutrients(calories);
   }
 };
 
@@ -615,13 +613,7 @@ export const chatWithNutritionist = async (
     model: "gemini-2.5-flash",
     history: history,
     config: {
-      systemInstruction: `You are a supportive, kind, but strict nutritionist. 
-      The user's goal is: ${profile.goals}.
-      They struggle with remembering to eat and eating regularly.
-      User Dislikes/Exclusions: ${profile.excludedIngredients || "None"}.
-      Keep answers concise, encouraging, and actionable. 
-      Always remind them that "done is better than perfect" regarding quick meals.
-      COMMUNICATE IN ${lang} LANGUAGE ONLY.`,
+      systemInstruction: SYSTEM_INSTRUCTION_CHAT(profile, lang),
     },
   });
 
