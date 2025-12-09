@@ -9,20 +9,34 @@ import {
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { t } from "../translations";
-import { Meal } from "../types";
+import { Meal, UserProfile } from "../types";
 
 interface MealListProps {
   meals: Meal[];
   language: "ru" | "en";
+  onMealToggle?: (mealId: string) => void;
+  profile?: UserProfile | null;
 }
 
-export const MealList: React.FC<MealListProps> = ({ meals, language }) => {
+export const MealList: React.FC<MealListProps> = ({
+  meals,
+  language,
+  onMealToggle,
+  profile,
+}) => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [activeDay, setActiveDay] = useState<number>(1);
   const text = t[language].meals;
 
   const toggleExpand = (id: string) => {
     setExpandedId(expandedId === id ? null : id);
+  };
+
+  const handleMealToggle = (e: React.MouseEvent, mealId: string) => {
+    e.stopPropagation(); // Prevent expanding/collapsing when clicking checkbox
+    if (onMealToggle) {
+      onMealToggle(mealId);
+    }
   };
 
   // Group by day
@@ -98,11 +112,36 @@ export const MealList: React.FC<MealListProps> = ({ meals, language }) => {
             >
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
-                  {meal.completedAt && (
-                    <CheckCircle2
-                      size={16}
-                      className="text-teal-600 shrink-0"
-                    />
+                  {onMealToggle && profile ? (
+                    <button
+                      onClick={(e) => handleMealToggle(e, meal.id)}
+                      className={`shrink-0 transition-all active:scale-90 ${
+                        meal.completedAt
+                          ? "text-teal-600"
+                          : "text-slate-300 hover:text-teal-400"
+                      }`}
+                      aria-label={
+                        meal.completedAt
+                          ? language === "ru"
+                            ? "Отметить как несъеденное"
+                            : "Mark as not eaten"
+                          : language === "ru"
+                          ? "Отметить как съеденное"
+                          : "Mark as eaten"
+                      }
+                    >
+                      <CheckCircle2
+                        size={20}
+                        className={meal.completedAt ? "fill-current" : ""}
+                      />
+                    </button>
+                  ) : (
+                    meal.completedAt && (
+                      <CheckCircle2
+                        size={16}
+                        className="text-teal-600 shrink-0"
+                      />
+                    )
                   )}
                   <span
                     className={`text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wide ${

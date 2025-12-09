@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ChatCoach } from "./components/ChatCoach";
 import { Dashboard } from "./components/Dashboard";
+import { Insights } from "./components/Insights";
 import { MealList } from "./components/MealList";
 import { Navigation } from "./components/Navigation";
 import { Onboarding } from "./components/Onboarding";
@@ -12,6 +13,7 @@ import {
   replaceMealsWithIngredient,
 } from "./services/geminiService";
 import {
+  DailyHistoryEntry,
   EatenMealEntry,
   Ingredient,
   Meal,
@@ -27,6 +29,7 @@ const App = () => {
   const [shoppingList, setShoppingList] = useState<Ingredient[]>([]);
   const [offPlanMeals, setOffPlanMeals] = useState<OffPlanMealEntry[]>([]);
   const [eatenMeals, setEatenMeals] = useState<EatenMealEntry[]>([]);
+  const [dailyHistory, setDailyHistory] = useState<DailyHistoryEntry[]>([]);
   const [isLoadingPlan, setIsLoadingPlan] = useState(false);
 
   // Load state from localStorage on mount
@@ -36,6 +39,7 @@ const App = () => {
     const savedShop = localStorage.getItem("nutripulse_shopping");
     const savedOffPlan = localStorage.getItem("nutripulse_offplan");
     const savedEatenMeals = localStorage.getItem("nutripulse_eaten");
+    const savedHistory = localStorage.getItem("nutripulse_history");
 
     if (savedProfile) {
       const parsedProfile = JSON.parse(savedProfile);
@@ -48,6 +52,7 @@ const App = () => {
     if (savedShop) setShoppingList(JSON.parse(savedShop));
     if (savedOffPlan) setOffPlanMeals(JSON.parse(savedOffPlan));
     if (savedEatenMeals) setEatenMeals(JSON.parse(savedEatenMeals));
+    if (savedHistory) setDailyHistory(JSON.parse(savedHistory));
   }, []);
 
   // Save profile updates
@@ -70,6 +75,73 @@ const App = () => {
   // Save eaten meals
   useEffect(() => {
     localStorage.setItem("nutripulse_eaten", JSON.stringify(eatenMeals));
+  }, [eatenMeals]);
+
+  // Save daily history
+  useEffect(() => {
+    localStorage.setItem("nutripulse_history", JSON.stringify(dailyHistory));
+  }, [dailyHistory]);
+
+  // Update daily history when eatenMeals change
+  useEffect(() => {
+    if (eatenMeals.length === 0) return;
+
+    // Group meals by date
+    const mealsByDate = new Map<string, EatenMealEntry[]>();
+    eatenMeals.forEach((meal) => {
+      const date = new Date(meal.timestamp);
+      const dateStr = `${date.getFullYear()}-${String(
+        date.getMonth() + 1
+      ).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+      if (!mealsByDate.has(dateStr)) {
+        mealsByDate.set(dateStr, []);
+      }
+      mealsByDate.get(dateStr)!.push(meal);
+    });
+
+    // Calculate daily totals
+    const newHistory: DailyHistoryEntry[] = [];
+    mealsByDate.forEach((meals, date) => {
+      const calories = meals.reduce((sum, m) => sum + (m.calories || 0), 0);
+      const protein = meals.reduce(
+        (sum, m) => sum + (m.macronutrients?.protein || 0),
+        0
+      );
+      const carbs = meals.reduce(
+        (sum, m) => sum + (m.macronutrients?.carbs || 0),
+        0
+      );
+      const fat = meals.reduce(
+        (sum, m) => sum + (m.macronutrients?.fat || 0),
+        0
+      );
+
+      newHistory.push({
+        date,
+        calories,
+        protein,
+        carbs,
+        fat,
+        meals,
+      });
+    });
+
+    // Merge with existing history (keep old entries if they don't have new data)
+    setDailyHistory((prevHistory) => {
+      const historyMap = new Map<string, DailyHistoryEntry>();
+      // Add existing entries
+      prevHistory.forEach((entry) => {
+        historyMap.set(entry.date, entry);
+      });
+      // Update or add new entries
+      newHistory.forEach((entry) => {
+        historyMap.set(entry.date, entry);
+      });
+      // Convert back to array and sort by date
+      return Array.from(historyMap.values()).sort(
+        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+      );
+    });
   }, [eatenMeals]);
 
   const handleOnboardingComplete = (newProfile: UserProfile) => {
@@ -133,101 +205,153 @@ const App = () => {
     const updated = { ...profile, lastMealTime: now };
     setProfile(updated);
 
+    // Helper function to save meal to eaten meals
+    const saveMealToEaten = (meal: Meal) => {
+      const calories = meal.calories || 0;
+      if (calories > 0 && profile) {
+        // Analyze BJU asynchronously
+        analyzeMacronutrients(meal.description || meal.name, calories, profile)
+          .then((macronutrients) => {
+            // Calculate activity hours (rough estimate: 1 hour of moderate activity = ~300 kcal)
+            const activityHours =
+              calories > 0 ? Math.round((calories / 300) * 10) / 10 : 0;
+
+            const eatenMeal: EatenMealEntry = {
+              id: `eaten-${now}-${meal.id}`,
+              name: meal.name,
+              description: meal.description,
+              timestamp: now,
+              calories: calories,
+              macronutrients: macronutrients || undefined,
+              activityHours: activityHours > 0 ? activityHours : undefined,
+              source: "planned",
+              mealId: meal.id,
+              day: meal.day,
+            };
+            setEatenMeals((prev) => {
+              // Check if already exists
+              const exists = prev.find((m) => m.id === eatenMeal.id);
+              if (exists) {
+                return prev.map((m) => (m.id === eatenMeal.id ? eatenMeal : m));
+              }
+              return [...prev, eatenMeal];
+            });
+          })
+          .catch((error) => {
+            console.error("Failed to analyze macronutrients", error);
+            // Save without BJU
+            const activityHours =
+              calories > 0 ? Math.round((calories / 300) * 10) / 10 : 0;
+            const eatenMeal: EatenMealEntry = {
+              id: `eaten-${now}-${meal.id}`,
+              name: meal.name,
+              description: meal.description,
+              timestamp: now,
+              calories: calories,
+              activityHours: activityHours > 0 ? activityHours : undefined,
+              source: "planned",
+              mealId: meal.id,
+              day: meal.day,
+            };
+            setEatenMeals((prev) => {
+              const exists = prev.find((m) => m.id === eatenMeal.id);
+              if (exists) {
+                return prev.map((m) => (m.id === eatenMeal.id ? eatenMeal : m));
+              }
+              return [...prev, eatenMeal];
+            });
+          });
+      } else {
+        // Save without BJU if no calories
+        const eatenMeal: EatenMealEntry = {
+          id: `eaten-${now}-${meal.id}`,
+          name: meal.name,
+          description: meal.description,
+          timestamp: now,
+          calories: calories,
+          source: "planned",
+          mealId: meal.id,
+          day: meal.day,
+        };
+        setEatenMeals((prev) => {
+          const exists = prev.find((m) => m.id === eatenMeal.id);
+          if (exists) {
+            return prev.map((m) => (m.id === eatenMeal.id ? eatenMeal : m));
+          }
+          return [...prev, eatenMeal];
+        });
+      }
+    };
+
     // Mark corresponding meal as completed and save to eaten meals
     const mealToMark = getMealToMark();
+    let mealToUpdate: Meal | null = null;
+
     if (mealToMark && meals.length > 0) {
-      const mealToUpdate = meals.find(
-        (m) => m.day === mealToMark.day && m.type === mealToMark.type
+      // First, try to find exact match that is not completed
+      mealToUpdate = meals.find(
+        (m) =>
+          m.day === mealToMark.day &&
+          m.type === mealToMark.type &&
+          !m.completedAt
       );
-      if (mealToUpdate && !mealToUpdate.completedAt) {
+
+      // If not found, try to find any meal of that type (even if completed)
+      if (!mealToUpdate) {
+        mealToUpdate = meals.find(
+          (m) => m.day === mealToMark.day && m.type === mealToMark.type
+        );
+      }
+
+      // If still not found, find the next uncompleted meal of that day
+      if (!mealToUpdate) {
+        const dayMeals = meals.filter(
+          (m) => m.day === mealToMark.day && !m.completedAt
+        );
+        if (dayMeals.length > 0) {
+          // Return the first uncompleted meal (prioritize by meal order: Breakfast, Lunch, Dinner, Snack)
+          const mealOrder = ["Breakfast", "Lunch", "Dinner", "Snack"];
+          const sortedMeals = dayMeals.sort((a, b) => {
+            const aIndex = mealOrder.indexOf(a.type);
+            const bIndex = mealOrder.indexOf(b.type);
+            return aIndex - bIndex;
+          });
+          mealToUpdate = sortedMeals[0];
+        }
+      }
+
+      // If still not found, use any meal from that day
+      if (!mealToUpdate) {
+        const dayMeals = meals.filter((m) => m.day === mealToMark.day);
+        if (dayMeals.length > 0) {
+          const mealOrder = ["Breakfast", "Lunch", "Dinner", "Snack"];
+          const sortedMeals = dayMeals.sort((a, b) => {
+            const aIndex = mealOrder.indexOf(a.type);
+            const bIndex = mealOrder.indexOf(b.type);
+            return aIndex - bIndex;
+          });
+          mealToUpdate = sortedMeals[0];
+        }
+      }
+    }
+
+    // If we have a meal to update, mark it as completed and save to eaten meals
+    if (mealToUpdate) {
+      // Only mark as completed if it wasn't already completed
+      if (!mealToUpdate.completedAt) {
         const updatedMeals = meals.map((m) =>
-          m.id === mealToUpdate.id ? { ...m, completedAt: now } : m
+          m.id === mealToUpdate!.id ? { ...m, completedAt: now } : m
         );
         setMeals(updatedMeals);
+      }
 
-        // Save to eaten meals with BJU analysis
-        const calories = mealToUpdate.calories || 0;
-        if (calories > 0 && profile) {
-          // Analyze BJU asynchronously
-          analyzeMacronutrients(
-            mealToUpdate.description || mealToUpdate.name,
-            calories,
-            profile
-          )
-            .then((macronutrients) => {
-              // Calculate activity hours (rough estimate: 1 hour of moderate activity = ~300 kcal)
-              const activityHours =
-                calories > 0 ? Math.round((calories / 300) * 10) / 10 : 0;
-
-              const eatenMeal: EatenMealEntry = {
-                id: `eaten-${now}-${mealToUpdate.id}`,
-                name: mealToUpdate.name,
-                description: mealToUpdate.description,
-                timestamp: now,
-                calories: calories,
-                macronutrients: macronutrients || undefined,
-                activityHours: activityHours > 0 ? activityHours : undefined,
-                source: "planned",
-                mealId: mealToUpdate.id,
-                day: mealToUpdate.day,
-              };
-              setEatenMeals((prev) => {
-                // Check if already exists
-                const exists = prev.find((m) => m.id === eatenMeal.id);
-                if (exists) {
-                  return prev.map((m) =>
-                    m.id === eatenMeal.id ? eatenMeal : m
-                  );
-                }
-                return [...prev, eatenMeal];
-              });
-            })
-            .catch((error) => {
-              console.error("Failed to analyze macronutrients", error);
-              // Save without BJU
-              const activityHours =
-                calories > 0 ? Math.round((calories / 300) * 10) / 10 : 0;
-              const eatenMeal: EatenMealEntry = {
-                id: `eaten-${now}-${mealToUpdate.id}`,
-                name: mealToUpdate.name,
-                description: mealToUpdate.description,
-                timestamp: now,
-                calories: calories,
-                activityHours: activityHours > 0 ? activityHours : undefined,
-                source: "planned",
-                mealId: mealToUpdate.id,
-                day: mealToUpdate.day,
-              };
-              setEatenMeals((prev) => {
-                const exists = prev.find((m) => m.id === eatenMeal.id);
-                if (exists) {
-                  return prev.map((m) =>
-                    m.id === eatenMeal.id ? eatenMeal : m
-                  );
-                }
-                return [...prev, eatenMeal];
-              });
-            });
-        } else {
-          // Save without BJU if no calories
-          const eatenMeal: EatenMealEntry = {
-            id: `eaten-${now}-${mealToUpdate.id}`,
-            name: mealToUpdate.name,
-            description: mealToUpdate.description,
-            timestamp: now,
-            calories: calories,
-            source: "planned",
-            mealId: mealToUpdate.id,
-            day: mealToUpdate.day,
-          };
-          setEatenMeals((prev) => {
-            const exists = prev.find((m) => m.id === eatenMeal.id);
-            if (exists) {
-              return prev.map((m) => (m.id === eatenMeal.id ? eatenMeal : m));
-            }
-            return [...prev, eatenMeal];
-          });
-        }
+      // Always save to eaten meals (even if already completed, with new timestamp)
+      saveMealToEaten(mealToUpdate);
+    } else if (meals.length > 0) {
+      // If no specific meal found but we have meals, use the first meal from day 1
+      const firstMeal = meals.find((m) => m.day === 1);
+      if (firstMeal) {
+        saveMealToEaten(firstMeal);
       }
     }
   };
@@ -300,6 +424,118 @@ const App = () => {
     setShoppingList([]);
   };
 
+  // Function to toggle meal completion status and save to eaten meals
+  const toggleMeal = (mealId: string) => {
+    if (!profile) return;
+    const meal = meals.find((m) => m.id === mealId);
+    if (!meal) return;
+
+    const now = Date.now();
+    const isCurrentlyCompleted = !!meal.completedAt;
+
+    // Toggle completion status
+    const updatedMeals = meals.map((m) =>
+      m.id === mealId
+        ? { ...m, completedAt: isCurrentlyCompleted ? undefined : now }
+        : m
+    );
+    setMeals(updatedMeals);
+
+    // If marking as completed, save to eaten meals
+    if (!isCurrentlyCompleted) {
+      // Helper function to save meal to eaten meals (reuse from updateLastMeal)
+      const saveMealToEaten = (mealToSave: Meal) => {
+        const calories = mealToSave.calories || 0;
+        if (calories > 0 && profile) {
+          // Analyze BJU asynchronously
+          analyzeMacronutrients(
+            mealToSave.description || mealToSave.name,
+            calories,
+            profile
+          )
+            .then((macronutrients) => {
+              // Calculate activity hours (rough estimate: 1 hour of moderate activity = ~300 kcal)
+              const activityHours =
+                calories > 0 ? Math.round((calories / 300) * 10) / 10 : 0;
+
+              const eatenMeal: EatenMealEntry = {
+                id: `eaten-${now}-${mealToSave.id}`,
+                name: mealToSave.name,
+                description: mealToSave.description,
+                timestamp: now,
+                calories: calories,
+                macronutrients: macronutrients || undefined,
+                activityHours: activityHours > 0 ? activityHours : undefined,
+                source: "planned",
+                mealId: mealToSave.id,
+                day: mealToSave.day,
+              };
+              setEatenMeals((prev) => {
+                // Check if already exists
+                const exists = prev.find((m) => m.id === eatenMeal.id);
+                if (exists) {
+                  return prev.map((m) =>
+                    m.id === eatenMeal.id ? eatenMeal : m
+                  );
+                }
+                return [...prev, eatenMeal];
+              });
+            })
+            .catch((error) => {
+              console.error("Failed to analyze macronutrients", error);
+              // Save without BJU
+              const activityHours =
+                calories > 0 ? Math.round((calories / 300) * 10) / 10 : 0;
+              const eatenMeal: EatenMealEntry = {
+                id: `eaten-${now}-${mealToSave.id}`,
+                name: mealToSave.name,
+                description: mealToSave.description,
+                timestamp: now,
+                calories: calories,
+                activityHours: activityHours > 0 ? activityHours : undefined,
+                source: "planned",
+                mealId: mealToSave.id,
+                day: mealToSave.day,
+              };
+              setEatenMeals((prev) => {
+                const exists = prev.find((m) => m.id === eatenMeal.id);
+                if (exists) {
+                  return prev.map((m) =>
+                    m.id === eatenMeal.id ? eatenMeal : m
+                  );
+                }
+                return [...prev, eatenMeal];
+              });
+            });
+        } else {
+          // Save without BJU if no calories
+          const eatenMeal: EatenMealEntry = {
+            id: `eaten-${now}-${mealToSave.id}`,
+            name: mealToSave.name,
+            description: mealToSave.description,
+            timestamp: now,
+            calories: calories,
+            source: "planned",
+            mealId: mealToSave.id,
+            day: mealToSave.day,
+          };
+          setEatenMeals((prev) => {
+            const exists = prev.find((m) => m.id === eatenMeal.id);
+            if (exists) {
+              return prev.map((m) => (m.id === eatenMeal.id ? eatenMeal : m));
+            }
+            return [...prev, eatenMeal];
+          });
+        }
+      };
+
+      saveMealToEaten(meal);
+    } else {
+      // If unmarking, remove from eaten meals (optional - you might want to keep history)
+      // For now, we'll keep the history but just unmark the meal
+    }
+  };
+
   if (!profile || view === ViewState.ONBOARDING) {
     return <Onboarding onComplete={handleOnboardingComplete} />;
   }
@@ -354,7 +590,12 @@ const App = () => {
           />
         )}
         {view === ViewState.MEALS && (
-          <MealList meals={meals} language={currentLang} />
+          <MealList
+            meals={meals}
+            language={currentLang}
+            onMealToggle={toggleMeal}
+            profile={profile}
+          />
         )}
         {view === ViewState.SHOPPING && (
           <ShoppingList
@@ -374,6 +615,13 @@ const App = () => {
             offPlanMeals={offPlanMeals}
             eatenMeals={eatenMeals}
             language={currentLang}
+          />
+        )}
+        {view === ViewState.INSIGHTS && (
+          <Insights
+            history={dailyHistory}
+            language={currentLang}
+            profile={profile}
           />
         )}
       </main>

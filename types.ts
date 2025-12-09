@@ -5,6 +5,7 @@ export enum ViewState {
   SHOPPING = "SHOPPING",
   CHAT = "CHAT",
   STATS = "STATS",
+  INSIGHTS = "INSIGHTS",
 }
 
 export interface UserProfile {
@@ -70,4 +71,13 @@ export interface EatenMealEntry {
   source: "planned" | "off-plan" | "photo"; // Откуда взялась еда
   mealId?: string; // ID из плана, если это planned
   day?: number; // День плана
+}
+
+export interface DailyHistoryEntry {
+  date: string; // YYYY-MM-DD format
+  calories: number;
+  protein: number; // grams
+  carbs: number; // grams
+  fat: number; // grams
+  meals: EatenMealEntry[]; // All meals eaten on this day
 }

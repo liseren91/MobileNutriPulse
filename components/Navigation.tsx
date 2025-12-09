@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   MessageCircle,
   ShoppingCart,
+  TrendingUp,
 } from "lucide-react";
 import React from "react";
 import { t } from "../translations";
@@ -27,6 +28,7 @@ export const Navigation: React.FC<NavigationProps> = ({
     { view: ViewState.MEALS, icon: CalendarDays, label: text.plan },
     { view: ViewState.SHOPPING, icon: ShoppingCart, label: text.list },
     { view: ViewState.STATS, icon: BarChart3, label: text.stats },
+    { view: ViewState.INSIGHTS, icon: TrendingUp, label: text.insights },
     { view: ViewState.CHAT, icon: MessageCircle, label: text.coach },
   ];
 
