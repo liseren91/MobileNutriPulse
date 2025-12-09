@@ -622,6 +622,7 @@ const App = () => {
             history={dailyHistory}
             language={currentLang}
             profile={profile}
+            meals={meals}
           />
         )}
       </main>

@@ -1,18 +1,20 @@
 import { ArrowRight, Award, BarChart3, Flame } from "lucide-react";
 import React, { useMemo } from "react";
 import { t } from "../translations";
-import { DailyHistoryEntry, UserProfile } from "../types";
+import { DailyHistoryEntry, Meal, UserProfile } from "../types";
 
 interface InsightsProps {
   history: DailyHistoryEntry[];
   language: "ru" | "en";
   profile?: UserProfile | null;
+  meals: Meal[];
 }
 
 export const Insights: React.FC<InsightsProps> = ({
   history,
   language,
   profile,
+  meals,
 }) => {
   const text = t[language].insights;
 
@@ -144,6 +146,103 @@ export const Insights: React.FC<InsightsProps> = ({
   const maxCarbs = getMaxValue(weeklyData, "carbs");
   const maxFat = getMaxValue(weeklyData, "fat");
 
+  // Goals derived from user's plan (day 1). Fallback to defaults if missing.
+  const goals = useMemo(() => {
+    const PLAN_DAY = 1;
+    const dayMeals = meals.filter((m) => m.day === PLAN_DAY);
+    const planCalories = dayMeals.reduce(
+      (sum, m) => sum + (m.calories || 0),
+      0
+    );
+
+    const caloriesTarget = planCalories > 0 ? planCalories : 2000;
+    // Simple macro split based on calories target: P 30%, C 40%, F 30%
+    const proteinTarget = Math.round((caloriesTarget * 0.3) / 4);
+    const carbsTarget = Math.round((caloriesTarget * 0.4) / 4);
+    const fatTarget = Math.round((caloriesTarget * 0.3) / 9);
+
+    return {
+      calories: caloriesTarget,
+      protein: proteinTarget,
+      carbs: carbsTarget,
+      fat: fatTarget,
+    };
+  }, [meals]);
+
+  const goalData = [
+    {
+      key: "calories",
+      label: text.calories,
+      color: "text-red-500",
+      ring: "stroke-red-400",
+      value: todayData.calories,
+      target: goals.calories,
+    },
+    {
+      key: "protein",
+      label: text.protein,
+      color: "text-orange-500",
+      ring: "stroke-orange-400",
+      value: todayData.protein,
+      target: goals.protein,
+    },
+    {
+      key: "carbs",
+      label: text.carbs,
+      color: "text-blue-500",
+      ring: "stroke-blue-400",
+      value: todayData.carbs,
+      target: goals.carbs,
+    },
+    {
+      key: "fat",
+      label: text.fat,
+      color: "text-green-500",
+      ring: "stroke-green-400",
+      value: todayData.fat,
+      target: goals.fat,
+    },
+  ];
+
+  const renderGoalRing = (
+    progress: number,
+    ringClass: string,
+    size = 44,
+    stroke = 6
+  ) => {
+    const radius = (size - stroke) / 2;
+    const circumference = 2 * Math.PI * radius;
+    const offset = circumference * (1 - Math.min(Math.max(progress, 0), 1));
+    return (
+      <svg
+        width={size}
+        height={size}
+        viewBox={`0 0 ${size} ${size}`}
+        className="shrink-0"
+      >
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke="#e5e7eb"
+          strokeWidth={stroke}
+          fill="none"
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          className={ringClass}
+          strokeWidth={stroke}
+          fill="none"
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+        />
+      </svg>
+    );
+  };
+
   return (
     <div className="flex flex-col h-screen max-w-lg mx-auto bg-slate-50 pt-safe">
       {/* Header */}
@@ -185,6 +284,38 @@ export const Insights: React.FC<InsightsProps> = ({
                 {streak} {text.streakDays}
               </p>
               <p className="text-xs text-slate-500">{text.streakSubtitle}</p>
+            </div>
+
+            {/* Goals */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-sm font-bold text-slate-700">
+                  {text.goals}
+                </span>
+                <ArrowRight size={16} className="text-slate-400" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {goalData.map((goal) => {
+                  const remaining = Math.max(goal.target - goal.value, 0);
+                  const progress = goal.value / goal.target;
+                  return (
+                    <div
+                      key={goal.key}
+                      className="flex items-center gap-3 bg-slate-50 rounded-2xl px-3 py-3 border border-slate-100"
+                    >
+                      {renderGoalRing(progress, goal.ring)}
+                      <div>
+                        <p className={`text-base font-bold ${goal.color}`}>
+                          {goal.label}
+                        </p>
+                        <p className="text-sm text-slate-500">
+                          {Math.round(remaining)} {text.left}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Calorie Balance Card */}

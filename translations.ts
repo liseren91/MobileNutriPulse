@@ -152,6 +152,8 @@ export const t = {
     insights: {
       title: "Insights",
       subtitle: "История питания",
+      goals: "Цели",
+      left: "осталось",
       streak: "Серия",
       streakDays: "Дней",
       streakSubtitle: "Начните логировать, чтобы начать серию.",
@@ -323,6 +325,8 @@ export const t = {
     insights: {
       title: "Insights",
       subtitle: "Your nutrition history",
+      goals: "Goals",
+      left: "left",
       streak: "Streak",
       streakDays: "Days",
       streakSubtitle: "Log to begin a new streak.",
