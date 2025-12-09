@@ -1,7 +1,7 @@
 import { CheckCircle2, Flame, X, XCircle } from "lucide-react";
 import React, { useMemo } from "react";
 import { t } from "../translations";
-import { DailyHistoryEntry, Meal, UserProfile } from "../types";
+import { DailyHistoryEntry, EatenMealEntry, Meal, UserProfile } from "../types";
 import { Mascot } from "./Mascot";
 
 interface DayEndReviewProps {
@@ -9,6 +9,7 @@ interface DayEndReviewProps {
   meals: Meal[];
   day: number;
   dailyHistory: DailyHistoryEntry[];
+  eatenMeals?: EatenMealEntry[];
   onClose: () => void;
 }
 
@@ -17,6 +18,7 @@ export const DayEndReview: React.FC<DayEndReviewProps> = ({
   meals,
   day,
   dailyHistory,
+  eatenMeals = [],
   onClose,
 }) => {
   const lang = profile.language || "ru";
@@ -38,28 +40,63 @@ export const DayEndReview: React.FC<DayEndReviewProps> = ({
     )}-${String(today.getDate()).padStart(2, "0")}`;
   };
 
-  // Get today's data from history
+  // Get today's data from history or eatenMeals
   const todayData = useMemo(() => {
     const today = getTodayDate();
+
+    // First, try to get data from dailyHistory
     const todayEntries = dailyHistory.filter((h) => h.date === today);
 
-    if (todayEntries.length === 0) {
+    if (todayEntries.length > 0) {
+      // Sum all entries for today (shouldn't be multiple, but protect)
       return {
-        calories: 0,
-        protein: 0,
-        carbs: 0,
-        fat: 0,
+        calories: todayEntries.reduce((sum, e) => sum + e.calories, 0),
+        protein: todayEntries.reduce((sum, e) => sum + e.protein, 0),
+        carbs: todayEntries.reduce((sum, e) => sum + e.carbs, 0),
+        fat: todayEntries.reduce((sum, e) => sum + e.fat, 0),
       };
     }
 
-    // Sum all entries for today (shouldn't be multiple, but protect)
+    // If no data in dailyHistory, calculate from eatenMeals for today
+    if (eatenMeals.length > 0) {
+      const todayEatenMeals = eatenMeals.filter((meal) => {
+        const mealDate = new Date(meal.timestamp);
+        const mealDateStr = `${mealDate.getFullYear()}-${String(
+          mealDate.getMonth() + 1
+        ).padStart(2, "0")}-${String(mealDate.getDate()).padStart(2, "0")}`;
+        return mealDateStr === today;
+      });
+
+      if (todayEatenMeals.length > 0) {
+        return {
+          calories: todayEatenMeals.reduce(
+            (sum, m) => sum + (m.calories || 0),
+            0
+          ),
+          protein: todayEatenMeals.reduce(
+            (sum, m) => sum + (m.macronutrients?.protein || 0),
+            0
+          ),
+          carbs: todayEatenMeals.reduce(
+            (sum, m) => sum + (m.macronutrients?.carbs || 0),
+            0
+          ),
+          fat: todayEatenMeals.reduce(
+            (sum, m) => sum + (m.macronutrients?.fat || 0),
+            0
+          ),
+        };
+      }
+    }
+
+    // Default to zero if no data found
     return {
-      calories: todayEntries.reduce((sum, e) => sum + e.calories, 0),
-      protein: todayEntries.reduce((sum, e) => sum + e.protein, 0),
-      carbs: todayEntries.reduce((sum, e) => sum + e.carbs, 0),
-      fat: todayEntries.reduce((sum, e) => sum + e.fat, 0),
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
     };
-  }, [dailyHistory]);
+  }, [dailyHistory, eatenMeals]);
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">

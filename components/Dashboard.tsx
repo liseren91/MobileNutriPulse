@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import { t } from "../translations";
-import { Meal, UserProfile } from "../types";
+import { EatenMealEntry, Meal, UserProfile } from "../types";
 import { DayEndReview } from "./DayEndReview";
 import { Mascot } from "./Mascot";
 import { OffPlanMeal } from "./OffPlanMeal";
@@ -27,6 +27,7 @@ interface DashboardProps {
   meals: Meal[];
   currentPlanDay: number;
   dailyHistory: import("../types").DailyHistoryEntry[];
+  eatenMeals?: EatenMealEntry[];
   onOffPlanMealSaved?: (meal: import("../types").OffPlanMealEntry) => void;
   onProfileClick?: () => void;
 }
@@ -40,6 +41,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   meals,
   currentPlanDay,
   dailyHistory,
+  eatenMeals = [],
   onOffPlanMealSaved,
   onProfileClick,
 }) => {
@@ -535,6 +537,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           meals={meals}
           day={reviewDay}
           dailyHistory={dailyHistory}
+          eatenMeals={eatenMeals}
           onClose={() => setShowDayEndReview(false)}
         />
       )}

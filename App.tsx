@@ -739,6 +739,7 @@ const App = () => {
             meals={meals}
             currentPlanDay={currentPlanDay}
             dailyHistory={dailyHistory}
+            eatenMeals={eatenMeals}
             onProfileClick={() => setView(ViewState.PROFILE)}
             onOffPlanMealSaved={async (meal) => {
               setOffPlanMeals((prev) => [...prev, meal]);
