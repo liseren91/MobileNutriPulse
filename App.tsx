@@ -5,11 +5,13 @@ import { Insights } from "./components/Insights";
 import { MealList } from "./components/MealList";
 import { Navigation } from "./components/Navigation";
 import { Onboarding } from "./components/Onboarding";
+import { Profile } from "./components/Profile";
 import { ShoppingList } from "./components/ShoppingList";
 import { Statistics } from "./components/Statistics";
 import {
   analyzeMacronutrients,
   generateMealPlan,
+  generateTrophy,
   replaceMealsWithIngredient,
 } from "./services/geminiService";
 import {
@@ -145,9 +147,141 @@ const App = () => {
   }, [eatenMeals]);
 
   const handleOnboardingComplete = (newProfile: UserProfile) => {
-    setProfile(newProfile);
+    const profileWithTracking = {
+      ...newProfile,
+      trackingStartDate: Date.now(),
+    };
+    setProfile(profileWithTracking);
     setView(ViewState.DASHBOARD);
   };
+
+  // Initialize tracking start date if not set
+  useEffect(() => {
+    if (profile && !profile.trackingStartDate && dailyHistory.length > 0) {
+      // Set tracking start date to the earliest history entry
+      const earliestDate = dailyHistory
+        .map((entry) => new Date(entry.date).getTime())
+        .sort((a, b) => a - b)[0];
+      if (earliestDate) {
+        setProfile((prev) => {
+          if (!prev) return prev;
+          return { ...prev, trackingStartDate: earliestDate };
+        });
+      }
+    } else if (profile && !profile.trackingStartDate && eatenMeals.length > 0) {
+      // Set tracking start date to the earliest eaten meal
+      const earliestMeal = eatenMeals
+        .map((meal) => meal.timestamp)
+        .sort((a, b) => a - b)[0];
+      if (earliestMeal) {
+        setProfile((prev) => {
+          if (!prev) return prev;
+          return { ...prev, trackingStartDate: earliestMeal };
+        });
+      }
+    }
+  }, [profile, dailyHistory, eatenMeals]);
+
+  // Check for 3-day plan completion and generate trophy
+  useEffect(() => {
+    if (!profile || meals.length === 0) return;
+
+    // Use tracking start date or plan start date as fallback
+    const trackingStart =
+      profile.trackingStartDate || profile.planStartDate || Date.now();
+    if (!trackingStart) return;
+
+    // Check if we should generate a trophy (every 3 days)
+    const now = Date.now();
+    const daysSinceStart = Math.floor(
+      (now - trackingStart) / (1000 * 60 * 60 * 24)
+    );
+
+    // Generate trophy every 3 days (after day 3, 6, 9, etc.)
+    if (daysSinceStart >= 3 && daysSinceStart % 3 === 0) {
+      const threeDayEnd = trackingStart + daysSinceStart * 24 * 60 * 60 * 1000;
+      const threeDayStart = threeDayEnd - 3 * 24 * 60 * 60 * 1000;
+
+      // Check if we already generated a trophy for this period
+      const existingTrophies = profile.trophies || [];
+      const startDateStr = new Date(threeDayStart).toISOString().split("T")[0];
+      const endDateStr = new Date(threeDayEnd).toISOString().split("T")[0];
+
+      const trophyExists = existingTrophies.some((trophy) => {
+        return (
+          trophy.threeDayPeriod.startDate === startDateStr &&
+          trophy.threeDayPeriod.endDate === endDateStr
+        );
+      });
+
+      if (!trophyExists) {
+        // Calculate completion rate for the 3-day period
+        // Count meals that were completed during this period
+        const threeDayMeals = meals.filter((meal) => {
+          if (!meal.completedAt) return false;
+          return (
+            meal.completedAt >= threeDayStart && meal.completedAt <= threeDayEnd
+          );
+        });
+
+        // Total meals in the plan (12 meals for 3 days: 4 meals per day)
+        const totalMealsInPlan = meals.length;
+        const completionRate =
+          totalMealsInPlan > 0
+            ? (threeDayMeals.length / totalMealsInPlan) * 100
+            : 0;
+
+        // Get eaten meals for this period (for trophy description)
+        const eatenMealsInPeriod = eatenMeals
+          .filter((meal) => {
+            return (
+              meal.timestamp >= threeDayStart && meal.timestamp <= threeDayEnd
+            );
+          })
+          .map((meal) => ({
+            name: meal.name || meal.description,
+            description: meal.description,
+            calories: meal.calories,
+          }));
+
+        // Generate trophy
+        generateTrophy(completionRate, eatenMealsInPeriod, profile)
+          .then((trophyData) => {
+            let grade: "excellent" | "good" | "effort";
+            if (completionRate >= 90) {
+              grade = "excellent";
+            } else if (completionRate >= 70) {
+              grade = "good";
+            } else {
+              grade = "effort";
+            }
+
+            const newTrophy = {
+              id: `trophy-${threeDayStart}-${threeDayEnd}`,
+              title: trophyData.title,
+              description: trophyData.description,
+              date: endDateStr,
+              grade,
+              threeDayPeriod: {
+                startDate: startDateStr,
+                endDate: endDateStr,
+              },
+            };
+
+            setProfile((prev) => {
+              if (!prev) return prev;
+              return {
+                ...prev,
+                trophies: [...(prev.trophies || []), newTrophy],
+              };
+            });
+          })
+          .catch((error) => {
+            console.error("Failed to generate trophy", error);
+          });
+      }
+    }
+  }, [profile, meals, eatenMeals]);
 
   // Helper function to calculate current plan day based on plan start date
   const getCurrentPlanDay = (): number => {
@@ -596,6 +730,7 @@ const App = () => {
             isLoadingPlan={isLoadingPlan}
             meals={meals}
             currentPlanDay={currentPlanDay}
+            onProfileClick={() => setView(ViewState.PROFILE)}
             onOffPlanMealSaved={async (meal) => {
               setOffPlanMeals((prev) => [...prev, meal]);
               // Also save to eaten meals with BJU analysis
@@ -668,9 +803,27 @@ const App = () => {
             meals={meals}
           />
         )}
+        {view === ViewState.PROFILE && profile && (
+          <Profile
+            profile={profile}
+            meals={meals}
+            eatenMeals={eatenMeals}
+            dailyHistory={dailyHistory}
+            onProfileUpdate={(updatedProfile) => {
+              setProfile(updatedProfile);
+            }}
+            onBack={() => setView(ViewState.DASHBOARD)}
+          />
+        )}
       </main>
 
-      <Navigation currentView={view} setView={setView} language={currentLang} />
+      {view !== ViewState.PROFILE && (
+        <Navigation
+          currentView={view}
+          setView={setView}
+          language={currentLang}
+        />
+      )}
     </div>
   );
 };

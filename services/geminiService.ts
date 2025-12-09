@@ -620,3 +620,105 @@ export const chatWithNutritionist = async (
   const result = await chat.sendMessage({ message: newMessage });
   return result.text;
 };
+
+const TROPHY_SCHEMA = {
+  type: Type.OBJECT,
+  properties: {
+    title: { type: Type.STRING },
+    description: { type: Type.STRING },
+  },
+};
+
+export const generateTrophy = async (
+  completionRate: number, // 0-100%
+  eatenMeals: Array<{ name: string; description: string; calories: number }>,
+  profile: UserProfile
+): Promise<{ title: string; description: string }> => {
+  const ai = getAiClient();
+  const lang = profile.language === "en" ? "ENGLISH" : "RUSSIAN";
+
+  // Determine grade based on completion rate
+  let grade: "excellent" | "good" | "effort";
+  if (completionRate >= 90) {
+    grade = "excellent";
+  } else if (completionRate >= 70) {
+    grade = "good";
+  } else {
+    grade = "effort";
+  }
+
+  const mealsSummary = eatenMeals
+    .map((m) => `${m.name || m.description} (${m.calories} ккал)`)
+    .join(", ");
+
+  const prompt = `The user has completed a 3-day meal plan with ${completionRate.toFixed(
+    0
+  )}% completion rate.
+
+Meals eaten during these 3 days: ${mealsSummary || "Some meals were eaten"}
+
+Generate a humorous and creative trophy/medal title and description in ${lang} language based on the completion rate:
+
+- If completion rate is 90-100% (excellent): Create titles like "Чемпион", "Магистр", "Царь", "Повелитель", "Властелин", "Гуру", "Мастер" etc. Make it epic and celebratory. Description should praise their dedication and consistency.
+
+- If completion rate is 70-89% (good): Create titles like "Джедай на пути к силе", "Самурай на пути к силе", "Воин на пути", "Искатель на пути", "Ученик на пути к мастерству" etc. Make it encouraging, showing they're on the right path. Description should acknowledge progress and encourage to continue.
+
+- If completion rate is below 70% (effort): Create titles that reward effort, like "За старание", "За упорство", "За намерение", "За попытку", "За смелость" etc. Make it supportive and kind. Description should be encouraging and remind them that trying is what matters.
+
+The title should be short (1-4 words), creative, and humorous. The description should be 1-2 sentences, warm and supportive.
+
+Return ONLY a JSON object with "title" and "description" fields.`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: TROPHY_SCHEMA,
+      },
+    });
+
+    if (response.text) {
+      const data = JSON.parse(response.text);
+      return {
+        title:
+          data.title || (lang === "ENGLISH" ? "For Effort" : "За старание"),
+        description:
+          data.description ||
+          (lang === "ENGLISH"
+            ? "You tried your best!"
+            : "Ты старался, и это главное!"),
+      };
+    }
+  } catch (error) {
+    console.error("Failed to generate trophy", error);
+  }
+
+  // Fallback trophies
+  if (grade === "excellent") {
+    return {
+      title: lang === "ENGLISH" ? "Champion" : "Чемпион",
+      description:
+        lang === "ENGLISH"
+          ? "Perfect execution! You're a nutrition master!"
+          : "Идеальное выполнение! Ты мастер питания!",
+    };
+  } else if (grade === "good") {
+    return {
+      title: lang === "ENGLISH" ? "Warrior on the Path" : "Воин на пути",
+      description:
+        lang === "ENGLISH"
+          ? "Great progress! Keep going!"
+          : "Отличный прогресс! Продолжай в том же духе!",
+    };
+  } else {
+    return {
+      title: lang === "ENGLISH" ? "For Effort" : "За старание",
+      description:
+        lang === "ENGLISH"
+          ? "You tried, and that's what matters!"
+          : "Ты старался, и это главное!",
+    };
+  }
+};

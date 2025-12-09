@@ -27,6 +27,7 @@ interface DashboardProps {
   meals: Meal[];
   currentPlanDay: number;
   onOffPlanMealSaved?: (meal: import("../types").OffPlanMealEntry) => void;
+  onProfileClick?: () => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -38,6 +39,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   meals,
   currentPlanDay,
   onOffPlanMealSaved,
+  onProfileClick,
 }) => {
   const [timeLeft, setTimeLeft] = useState<string>("00:00:00");
   const [progress, setProgress] = useState(100);
@@ -312,7 +314,17 @@ export const Dashboard: React.FC<DashboardProps> = ({
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">
-              {text.hello}, {profile.name}
+              {text.hello},{" "}
+              {onProfileClick ? (
+                <button
+                  onClick={onProfileClick}
+                  className="hover:text-teal-600 transition-colors underline decoration-2 underline-offset-2"
+                >
+                  {profile.name}
+                </button>
+              ) : (
+                profile.name
+              )}
             </h1>
             <p className="text-slate-500 font-medium">{text.subtitle}</p>
           </div>

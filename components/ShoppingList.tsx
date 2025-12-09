@@ -121,41 +121,51 @@ export const ShoppingList: React.FC<ShoppingListProps> = ({
 
             {/* List */}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 divide-y divide-slate-100">
-              {items.map((item, idx) => (
-                <div
-                  key={idx}
-                  onClick={() => toggleItem(idx)}
-                  className={`p-4 flex items-center gap-4 cursor-pointer transition-colors ${
-                    item.checked ? "bg-slate-50" : "hover:bg-slate-50"
-                  }`}
-                >
+              {items
+                .map((item, originalIdx) => ({ item, originalIdx }))
+                .sort((a, b) => {
+                  // Неотмеченные товары (checked === false) идут первыми
+                  if (a.item.checked !== b.item.checked) {
+                    return a.item.checked ? 1 : -1;
+                  }
+                  // Сохраняем исходный порядок для товаров с одинаковым статусом
+                  return a.originalIdx - b.originalIdx;
+                })
+                .map(({ item, originalIdx }) => (
                   <div
-                    className={`text-slate-400 ${
-                      item.checked ? "text-teal-500" : ""
+                    key={originalIdx}
+                    onClick={() => toggleItem(originalIdx)}
+                    className={`p-4 flex items-center gap-4 cursor-pointer transition-colors ${
+                      item.checked ? "bg-slate-50" : "hover:bg-slate-50"
                     }`}
                   >
-                    {item.checked ? (
-                      <CheckSquare size={24} />
-                    ) : (
-                      <Square size={24} />
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <p
-                      className={`font-medium ${
-                        item.checked
-                          ? "text-slate-400 line-through"
-                          : "text-slate-800"
+                    <div
+                      className={`text-slate-400 ${
+                        item.checked ? "text-teal-500" : ""
                       }`}
                     >
-                      {item.item}
-                    </p>
-                    {item.amount && (
-                      <p className="text-xs text-slate-500">{item.amount}</p>
-                    )}
+                      {item.checked ? (
+                        <CheckSquare size={24} />
+                      ) : (
+                        <Square size={24} />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p
+                        className={`font-medium ${
+                          item.checked
+                            ? "text-slate-400 line-through"
+                            : "text-slate-800"
+                        }`}
+                      >
+                        {item.item}
+                      </p>
+                      {item.amount && (
+                        <p className="text-xs text-slate-500">{item.amount}</p>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
             </div>
 
             {/* Regenerate / Exclude Section */}

@@ -6,6 +6,25 @@ export enum ViewState {
   CHAT = "CHAT",
   STATS = "STATS",
   INSIGHTS = "INSIGHTS",
+  PROFILE = "PROFILE",
+}
+
+export interface MacroDistribution {
+  protein: number; // percentage
+  carbs: number; // percentage
+  fat: number; // percentage
+}
+
+export interface Trophy {
+  id: string;
+  title: string;
+  description: string;
+  date: string; // YYYY-MM-DD
+  grade: "excellent" | "good" | "effort"; // excellent = полное выполнение, good = 70-80%, effort = провал
+  threeDayPeriod: {
+    startDate: string; // YYYY-MM-DD
+    endDate: string; // YYYY-MM-DD
+  };
 }
 
 export interface UserProfile {
@@ -19,6 +38,13 @@ export interface UserProfile {
   excludedIngredients?: string; // New field for dislikes
   language: "ru" | "en"; // New language field
   planStartDate?: number; // Timestamp when the current meal plan was created
+  // Profile settings
+  preferredIngredients?: string; // What user likes to eat
+  calorieGoal?: number; // Daily calorie goal
+  macroDistribution?: MacroDistribution; // БЖУ distribution (percentages)
+  activePlanDay?: number; // Active day of the plan (1-3)
+  trackingStartDate?: number; // Timestamp when user started tracking
+  trophies?: Trophy[]; // Array of earned trophies
 }
 
 export interface Ingredient {
