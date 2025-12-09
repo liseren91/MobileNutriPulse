@@ -1,13 +1,14 @@
-import { CheckCircle2, X, XCircle } from "lucide-react";
-import React from "react";
+import { CheckCircle2, Flame, X, XCircle } from "lucide-react";
+import React, { useMemo } from "react";
 import { t } from "../translations";
-import { Meal, UserProfile } from "../types";
+import { DailyHistoryEntry, Meal, UserProfile } from "../types";
 import { Mascot } from "./Mascot";
 
 interface DayEndReviewProps {
   profile: UserProfile;
   meals: Meal[];
   day: number;
+  dailyHistory: DailyHistoryEntry[];
   onClose: () => void;
 }
 
@@ -15,6 +16,7 @@ export const DayEndReview: React.FC<DayEndReviewProps> = ({
   profile,
   meals,
   day,
+  dailyHistory,
   onClose,
 }) => {
   const lang = profile.language || "ru";
@@ -27,8 +29,40 @@ export const DayEndReview: React.FC<DayEndReviewProps> = ({
     dayMeals.length > 0 && completedMeals.length === dayMeals.length;
   const missedCount = dayMeals.length - completedMeals.length;
 
+  // Get today's date in YYYY-MM-DD format
+  const getTodayDate = () => {
+    const today = new Date();
+    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(
+      2,
+      "0"
+    )}-${String(today.getDate()).padStart(2, "0")}`;
+  };
+
+  // Get today's data from history
+  const todayData = useMemo(() => {
+    const today = getTodayDate();
+    const todayEntries = dailyHistory.filter((h) => h.date === today);
+
+    if (todayEntries.length === 0) {
+      return {
+        calories: 0,
+        protein: 0,
+        carbs: 0,
+        fat: 0,
+      };
+    }
+
+    // Sum all entries for today (shouldn't be multiple, but protect)
+    return {
+      calories: todayEntries.reduce((sum, e) => sum + e.calories, 0),
+      protein: todayEntries.reduce((sum, e) => sum + e.protein, 0),
+      carbs: todayEntries.reduce((sum, e) => sum + e.carbs, 0),
+      fat: todayEntries.reduce((sum, e) => sum + e.fat, 0),
+    };
+  }, [dailyHistory]);
+
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
       <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="p-6 border-b border-slate-100 flex items-center justify-between">
@@ -161,6 +195,56 @@ export const DayEndReview: React.FC<DayEndReviewProps> = ({
               </div>
             </div>
           )}
+
+          {/* Daily Summary - Итоги дня */}
+          <div className="bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200 rounded-2xl p-5 mt-4">
+            <h3 className="text-lg font-bold text-slate-800 mb-4">
+              {lang === "ru" ? "Итоги дня" : "Daily Summary"}
+            </h3>
+            <div className="space-y-3">
+              {/* Calories */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Flame size={18} className="text-red-500" />
+                  <span className="text-sm font-semibold text-slate-700">
+                    {lang === "ru" ? "Калории" : "Calories"}
+                  </span>
+                </div>
+                <span className="text-lg font-bold text-slate-800">
+                  {Math.round(todayData.calories)}{" "}
+                  {lang === "ru" ? "ккал" : "kcal"}
+                </span>
+              </div>
+
+              {/* Macros */}
+              <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-200">
+                <div className="text-center">
+                  <div className="text-xs text-slate-500 mb-1">
+                    {lang === "ru" ? "Белки" : "Protein"}
+                  </div>
+                  <div className="text-sm font-bold text-orange-600">
+                    {Math.round(todayData.protein)}g
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xs text-slate-500 mb-1">
+                    {lang === "ru" ? "Углеводы" : "Carbs"}
+                  </div>
+                  <div className="text-sm font-bold text-blue-600">
+                    {Math.round(todayData.carbs)}g
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xs text-slate-500 mb-1">
+                    {lang === "ru" ? "Жиры" : "Fat"}
+                  </div>
+                  <div className="text-sm font-bold text-green-600">
+                    {Math.round(todayData.fat)}g
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
 
           <button
             onClick={onClose}

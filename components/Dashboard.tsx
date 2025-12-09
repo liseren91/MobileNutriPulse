@@ -25,7 +25,10 @@ interface DashboardProps {
   hasPlan: boolean;
   isLoadingPlan: boolean;
   meals: Meal[];
+  currentPlanDay: number;
+  dailyHistory: import("../types").DailyHistoryEntry[];
   onOffPlanMealSaved?: (meal: import("../types").OffPlanMealEntry) => void;
+  onProfileClick?: () => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -35,7 +38,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
   hasPlan,
   isLoadingPlan,
   meals,
+  currentPlanDay,
+  dailyHistory,
   onOffPlanMealSaved,
+  onProfileClick,
 }) => {
   const [timeLeft, setTimeLeft] = useState<string>("00:00:00");
   const [progress, setProgress] = useState(100);
@@ -48,7 +54,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [showDayEndReview, setShowDayEndReview] = useState(false);
   const [reviewDay, setReviewDay] = useState<number>(1);
   const hasNotifiedRef = useRef(false);
-  const dayEndReviewShownRef = useRef<string>(""); // Track which day we've shown review for
+  // Track which day we've shown review for - load from localStorage on mount
+  const dayEndReviewShownRef = useRef<string>(
+    localStorage.getItem("nutripulse_dayReviewShown") || ""
+  );
 
   const lang = profile.language || "ru";
   const text = t[lang].dashboard;
@@ -216,39 +225,46 @@ export const Dashboard: React.FC<DashboardProps> = ({
     return () => clearInterval(interval);
   }, [profile, notificationsEnabled, lang, text]);
 
-  // Check for end of day review
+  // Check for end of day review - show once per day when app opens
+  // Show if there's any data (meals or dailyHistory) and we haven't shown it today
   useEffect(() => {
-    if (!hasPlan || meals.length === 0) return;
+    if (showDayEndReview) return;
 
-    const checkDayEnd = () => {
+    const checkDayEndReview = () => {
+      if (showDayEndReview) return;
+
       const now = new Date();
-      const currentHour = now.getHours();
       const today = now.toDateString();
 
-      // Show review 1 hour before sleep time (or at sleep time if it's late)
-      const reviewHour = SLEEP_START_HOUR - 1;
-      const shouldShowReview =
-        currentHour >= reviewHour && currentHour < SLEEP_START_HOUR + 1;
+      // Check if we've already shown review today
+      const lastShownDate = localStorage.getItem("nutripulse_dayReviewShown");
 
-      // Check if we've already shown review for today
-      if (shouldShowReview && dayEndReviewShownRef.current !== today) {
-        // Determine which day to review (for now, day 1)
-        // In future, can be improved to track actual plan start date
-        const dayToReview = 1;
-        const dayMeals = meals.filter((m) => m.day === dayToReview);
+      // Show review once per day - check if we haven't shown it today
+      if (lastShownDate !== today) {
+        // Show review if we have meals OR if we have daily history with data
+        const hasMeals = hasPlan && meals.length > 0;
+        const hasHistory = dailyHistory.length > 0;
 
-        if (dayMeals.length > 0) {
+        if (hasMeals || hasHistory) {
+          // Use current plan day for review if we have meals, otherwise use day 1
+          const dayToReview = hasMeals ? currentPlanDay : 1;
           setReviewDay(dayToReview);
           setShowDayEndReview(true);
+          // Save to localStorage and ref
+          localStorage.setItem("nutripulse_dayReviewShown", today);
           dayEndReviewShownRef.current = today;
         }
+      } else {
+        // Update ref if already shown today
+        dayEndReviewShownRef.current = today;
       }
     };
 
-    checkDayEnd();
-    const interval = setInterval(checkDayEnd, 60 * 60 * 1000); // Check every hour
-    return () => clearInterval(interval);
-  }, [hasPlan, meals, SLEEP_START_HOUR]);
+    // Check immediately on mount and when dependencies change
+    // Add a small delay to ensure dailyHistory is loaded
+    const timeoutId = setTimeout(checkDayEndReview, 500);
+    return () => clearTimeout(timeoutId);
+  }, [hasPlan, meals, currentPlanDay, dailyHistory, showDayEndReview]);
 
   const requestAccess = async () => {
     if (Capacitor.isNativePlatform()) {
@@ -306,7 +322,17 @@ export const Dashboard: React.FC<DashboardProps> = ({
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">
-              {text.hello}, {profile.name}
+              {text.hello},{" "}
+              {onProfileClick ? (
+                <button
+                  onClick={onProfileClick}
+                  className="hover:text-teal-600 transition-colors underline decoration-2 underline-offset-2"
+                >
+                  {profile.name}
+                </button>
+              ) : (
+                profile.name
+              )}
             </h1>
             <p className="text-slate-500 font-medium">{text.subtitle}</p>
           </div>
@@ -484,6 +510,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         {showOffPlanMeal && (
           <OffPlanMeal
             profile={profile}
+            currentPlanDay={currentPlanDay}
             onClose={() => setShowOffPlanMeal(false)}
             onMealAnalyzed={updateLastMeal}
             onMealSaved={onOffPlanMealSaved}
@@ -493,21 +520,24 @@ export const Dashboard: React.FC<DashboardProps> = ({
         {showQuickMealFeedback && (
           <QuickMealFeedback
             profile={profile}
+            currentPlanDay={currentPlanDay}
             onClose={() => setShowQuickMealFeedback(false)}
             onMealAnalyzed={updateLastMeal}
             onMealSaved={onOffPlanMealSaved}
           />
         )}
-
-        {showDayEndReview && (
-          <DayEndReview
-            profile={profile}
-            meals={meals}
-            day={reviewDay}
-            onClose={() => setShowDayEndReview(false)}
-          />
-        )}
       </div>
+
+      {/* DayEndReview rendered outside scrollable container to prevent overlapping */}
+      {showDayEndReview && (
+        <DayEndReview
+          profile={profile}
+          meals={meals}
+          day={reviewDay}
+          dailyHistory={dailyHistory}
+          onClose={() => setShowDayEndReview(false)}
+        />
+      )}
     </div>
   );
 };

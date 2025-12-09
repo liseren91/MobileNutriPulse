@@ -13,6 +13,7 @@ import { Mascot } from "./Mascot";
 
 interface OffPlanMealProps {
   profile: UserProfile;
+  currentPlanDay: number;
   onClose: () => void;
   onMealAnalyzed?: () => void;
   onMealSaved?: (meal: OffPlanMealEntry) => void;
@@ -20,6 +21,7 @@ interface OffPlanMealProps {
 
 export const OffPlanMeal: React.FC<OffPlanMealProps> = ({
   profile,
+  currentPlanDay,
   onClose,
   onMealAnalyzed,
   onMealSaved,
@@ -162,7 +164,7 @@ export const OffPlanMeal: React.FC<OffPlanMealProps> = ({
           description: description,
           timestamp: Date.now(),
           estimatedCalories: calories || undefined,
-          day: 1, // For MVP, default to day 1
+          day: currentPlanDay,
         };
         onMealSaved(mealEntry);
       }

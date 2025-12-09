@@ -5,11 +5,13 @@ import { Insights } from "./components/Insights";
 import { MealList } from "./components/MealList";
 import { Navigation } from "./components/Navigation";
 import { Onboarding } from "./components/Onboarding";
+import { Profile } from "./components/Profile";
 import { ShoppingList } from "./components/ShoppingList";
 import { Statistics } from "./components/Statistics";
 import {
   analyzeMacronutrients,
   generateMealPlan,
+  generateTrophy,
   replaceMealsWithIngredient,
 } from "./services/geminiService";
 import {
@@ -51,8 +53,25 @@ const App = () => {
     if (savedMeals) setMeals(JSON.parse(savedMeals));
     if (savedShop) setShoppingList(JSON.parse(savedShop));
     if (savedOffPlan) setOffPlanMeals(JSON.parse(savedOffPlan));
-    if (savedEatenMeals) setEatenMeals(JSON.parse(savedEatenMeals));
-    if (savedHistory) setDailyHistory(JSON.parse(savedHistory));
+    if (savedEatenMeals) {
+      const parsedEatenMeals = JSON.parse(savedEatenMeals);
+      setEatenMeals(parsedEatenMeals);
+      // Don't load savedHistory - let it be recalculated from eatenMeals
+      // This ensures data consistency and prevents duplicates
+    } else if (savedHistory) {
+      // Only load history if there are no eatenMeals to recalculate from
+      const parsedHistory = JSON.parse(savedHistory);
+      // Remove duplicates by date (keep only the last entry for each date)
+      const historyMap = new Map<string, DailyHistoryEntry>();
+      parsedHistory.forEach((entry: DailyHistoryEntry) => {
+        historyMap.set(entry.date, entry);
+      });
+      setDailyHistory(
+        Array.from(historyMap.values()).sort(
+          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+        )
+      );
+    }
   }, []);
 
   // Save profile updates
@@ -83,13 +102,13 @@ const App = () => {
   }, [dailyHistory]);
 
   // Update daily history when eatenMeals change
+  // Always recalculate completely from eatenMeals to avoid duplicates and incorrect totals
   useEffect(() => {
-    if (eatenMeals.length === 0) return;
-
-    // Group meals by date
+    // Group meals by date (using local time to match user's timezone)
     const mealsByDate = new Map<string, EatenMealEntry[]>();
     eatenMeals.forEach((meal) => {
       const date = new Date(meal.timestamp);
+      // Use local date to match how dates are displayed in Insights
       const dateStr = `${date.getFullYear()}-${String(
         date.getMonth() + 1
       ).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -99,10 +118,12 @@ const App = () => {
       mealsByDate.get(dateStr)!.push(meal);
     });
 
-    // Calculate daily totals
+    // Calculate daily totals - completely recalculate from all eatenMeals
     const newHistory: DailyHistoryEntry[] = [];
     mealsByDate.forEach((meals, date) => {
+      // Sum all calories for this date
       const calories = meals.reduce((sum, m) => sum + (m.calories || 0), 0);
+      // Sum all macronutrients for this date
       const protein = meals.reduce(
         (sum, m) => sum + (m.macronutrients?.protein || 0),
         0
@@ -122,31 +143,186 @@ const App = () => {
         protein,
         carbs,
         fat,
-        meals,
+        meals, // Store all meals for this date
       });
     });
 
-    // Merge with existing history (keep old entries if they don't have new data)
-    setDailyHistory((prevHistory) => {
-      const historyMap = new Map<string, DailyHistoryEntry>();
-      // Add existing entries
-      prevHistory.forEach((entry) => {
-        historyMap.set(entry.date, entry);
-      });
-      // Update or add new entries
-      newHistory.forEach((entry) => {
-        historyMap.set(entry.date, entry);
-      });
-      // Convert back to array and sort by date
-      return Array.from(historyMap.values()).sort(
-        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-      );
-    });
+    // Sort by date and set as new history (completely replace, don't merge)
+    const sortedHistory = newHistory.sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+    setDailyHistory(sortedHistory);
   }, [eatenMeals]);
 
   const handleOnboardingComplete = (newProfile: UserProfile) => {
-    setProfile(newProfile);
+    const profileWithTracking = {
+      ...newProfile,
+      trackingStartDate: Date.now(),
+    };
+    setProfile(profileWithTracking);
     setView(ViewState.DASHBOARD);
+  };
+
+  // Initialize tracking start date if not set
+  useEffect(() => {
+    if (profile && !profile.trackingStartDate && dailyHistory.length > 0) {
+      // Set tracking start date to the earliest history entry
+      const earliestDate = dailyHistory
+        .map((entry) => new Date(entry.date).getTime())
+        .sort((a, b) => a - b)[0];
+      if (earliestDate) {
+        setProfile((prev) => {
+          if (!prev) return prev;
+          return { ...prev, trackingStartDate: earliestDate };
+        });
+      }
+    } else if (profile && !profile.trackingStartDate && eatenMeals.length > 0) {
+      // Set tracking start date to the earliest eaten meal
+      const earliestMeal = eatenMeals
+        .map((meal) => meal.timestamp)
+        .sort((a, b) => a - b)[0];
+      if (earliestMeal) {
+        setProfile((prev) => {
+          if (!prev) return prev;
+          return { ...prev, trackingStartDate: earliestMeal };
+        });
+      }
+    }
+  }, [profile, dailyHistory, eatenMeals]);
+
+  // Check for 3-day plan completion and generate trophy
+  useEffect(() => {
+    if (!profile || meals.length === 0) return;
+
+    // Use tracking start date or plan start date as fallback
+    const trackingStart =
+      profile.trackingStartDate || profile.planStartDate || Date.now();
+    if (!trackingStart) return;
+
+    // Check if we should generate a trophy (every 3 days)
+    const now = Date.now();
+    const daysSinceStart = Math.floor(
+      (now - trackingStart) / (1000 * 60 * 60 * 24)
+    );
+
+    // Generate trophy every 3 days (after day 3, 6, 9, etc.)
+    if (daysSinceStart >= 3 && daysSinceStart % 3 === 0) {
+      const threeDayEnd = trackingStart + daysSinceStart * 24 * 60 * 60 * 1000;
+      const threeDayStart = threeDayEnd - 3 * 24 * 60 * 60 * 1000;
+
+      // Check if we already generated a trophy for this period
+      const existingTrophies = profile.trophies || [];
+      const startDateStr = new Date(threeDayStart).toISOString().split("T")[0];
+      const endDateStr = new Date(threeDayEnd).toISOString().split("T")[0];
+
+      const trophyExists = existingTrophies.some((trophy) => {
+        return (
+          trophy.threeDayPeriod.startDate === startDateStr &&
+          trophy.threeDayPeriod.endDate === endDateStr
+        );
+      });
+
+      if (!trophyExists) {
+        // Calculate completion rate for the 3-day period
+        // Count meals that were completed during this period
+        const threeDayMeals = meals.filter((meal) => {
+          if (!meal.completedAt) return false;
+          return (
+            meal.completedAt >= threeDayStart && meal.completedAt <= threeDayEnd
+          );
+        });
+
+        // Total meals in the plan (12 meals for 3 days: 4 meals per day)
+        const totalMealsInPlan = meals.length;
+        const completionRate =
+          totalMealsInPlan > 0
+            ? (threeDayMeals.length / totalMealsInPlan) * 100
+            : 0;
+
+        // Get eaten meals for this period (for trophy description)
+        const eatenMealsInPeriod = eatenMeals
+          .filter((meal) => {
+            return (
+              meal.timestamp >= threeDayStart && meal.timestamp <= threeDayEnd
+            );
+          })
+          .map((meal) => ({
+            name: meal.name || meal.description,
+            description: meal.description,
+            calories: meal.calories,
+          }));
+
+        // Generate trophy
+        generateTrophy(completionRate, eatenMealsInPeriod, profile)
+          .then((trophyData) => {
+            let grade: "excellent" | "good" | "effort";
+            if (completionRate >= 90) {
+              grade = "excellent";
+            } else if (completionRate >= 70) {
+              grade = "good";
+            } else {
+              grade = "effort";
+            }
+
+            const newTrophy = {
+              id: `trophy-${threeDayStart}-${threeDayEnd}`,
+              title: trophyData.title,
+              description: trophyData.description,
+              date: endDateStr,
+              grade,
+              threeDayPeriod: {
+                startDate: startDateStr,
+                endDate: endDateStr,
+              },
+            };
+
+            setProfile((prev) => {
+              if (!prev) return prev;
+              return {
+                ...prev,
+                trophies: [...(prev.trophies || []), newTrophy],
+              };
+            });
+          })
+          .catch((error) => {
+            console.error("Failed to generate trophy", error);
+          });
+      }
+    }
+  }, [profile, meals, eatenMeals]);
+
+  // Helper function to calculate current plan day based on plan start date
+  const getCurrentPlanDay = (): number => {
+    if (!profile || !profile.planStartDate || meals.length === 0) {
+      return 1; // Default to day 1 if no plan start date
+    }
+
+    const now = new Date();
+    const startDate = new Date(profile.planStartDate);
+
+    // Reset time to midnight for both dates to calculate days correctly
+    const nowMidnight = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate()
+    );
+    const startMidnight = new Date(
+      startDate.getFullYear(),
+      startDate.getMonth(),
+      startDate.getDate()
+    );
+
+    // Calculate difference in days
+    const diffTime = nowMidnight.getTime() - startMidnight.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    // Plan is typically 3 days, so cycle through days 1-3
+    // Day 0 = day 1, day 1 = day 2, day 2 = day 3, day 3+ = day 3 (or could restart)
+    const planDay = Math.min(Math.max(diffDays + 1, 1), 3);
+
+    // Check if this day exists in meals, if not, use day 1
+    const dayExists = meals.some((m) => m.day === planDay);
+    return dayExists ? planDay : 1;
   };
 
   // Helper function to determine which meal should be marked based on current time
@@ -159,8 +335,7 @@ const App = () => {
     const now = new Date();
     const currentHour = now.getHours();
 
-    // For MVP, use day 1 of the plan (can be improved to track plan start date)
-    const planDay = 1;
+    const planDay = getCurrentPlanDay();
 
     // Determine meal type based on time of day
     let mealType: "Breakfast" | "Lunch" | "Dinner" | "Snack";
@@ -348,8 +523,9 @@ const App = () => {
       // Always save to eaten meals (even if already completed, with new timestamp)
       saveMealToEaten(mealToUpdate);
     } else if (meals.length > 0) {
-      // If no specific meal found but we have meals, use the first meal from day 1
-      const firstMeal = meals.find((m) => m.day === 1);
+      // If no specific meal found but we have meals, use the first meal from current day
+      const currentDay = getCurrentPlanDay();
+      const firstMeal = meals.find((m) => m.day === currentDay);
       if (firstMeal) {
         saveMealToEaten(firstMeal);
       }
@@ -363,6 +539,9 @@ const App = () => {
       const data = await generateMealPlan(profile);
       setMeals(data.meals);
       setShoppingList(data.shoppingList);
+      // Save plan start date when creating a new plan
+      const updatedProfile = { ...profile, planStartDate: Date.now() };
+      setProfile(updatedProfile);
       setView(ViewState.MEALS);
     } catch (e) {
       console.error("Failed generation", e);
@@ -396,7 +575,11 @@ const App = () => {
         }
       } else {
         // Multiple exclusions or complex case - regenerate full plan
-        const updatedProfile = { ...profile, excludedIngredients: exclusions };
+        const updatedProfile = {
+          ...profile,
+          excludedIngredients: exclusions,
+          planStartDate: Date.now(), // Reset plan start date when regenerating full plan
+        };
         setProfile(updatedProfile);
         const data = await generateMealPlan(updatedProfile);
         setMeals(data.meals);
@@ -541,6 +724,7 @@ const App = () => {
   }
 
   const currentLang = profile.language || "ru";
+  const currentPlanDay = getCurrentPlanDay();
 
   return (
     <div className="bg-slate-50 min-h-screen font-sans text-slate-900">
@@ -553,6 +737,9 @@ const App = () => {
             hasPlan={meals.length > 0}
             isLoadingPlan={isLoadingPlan}
             meals={meals}
+            currentPlanDay={currentPlanDay}
+            dailyHistory={dailyHistory}
+            onProfileClick={() => setView(ViewState.PROFILE)}
             onOffPlanMealSaved={async (meal) => {
               setOffPlanMeals((prev) => [...prev, meal]);
               // Also save to eaten meals with BJU analysis
@@ -622,11 +809,30 @@ const App = () => {
             history={dailyHistory}
             language={currentLang}
             profile={profile}
+            meals={meals}
+          />
+        )}
+        {view === ViewState.PROFILE && profile && (
+          <Profile
+            profile={profile}
+            meals={meals}
+            eatenMeals={eatenMeals}
+            dailyHistory={dailyHistory}
+            onProfileUpdate={(updatedProfile) => {
+              setProfile(updatedProfile);
+            }}
+            onBack={() => setView(ViewState.DASHBOARD)}
           />
         )}
       </main>
 
-      <Navigation currentView={view} setView={setView} language={currentLang} />
+      {view !== ViewState.PROFILE && (
+        <Navigation
+          currentView={view}
+          setView={setView}
+          language={currentLang}
+        />
+      )}
     </div>
   );
 };
