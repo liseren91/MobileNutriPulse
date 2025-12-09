@@ -149,6 +149,40 @@ const App = () => {
     setView(ViewState.DASHBOARD);
   };
 
+  // Helper function to calculate current plan day based on plan start date
+  const getCurrentPlanDay = (): number => {
+    if (!profile || !profile.planStartDate || meals.length === 0) {
+      return 1; // Default to day 1 if no plan start date
+    }
+
+    const now = new Date();
+    const startDate = new Date(profile.planStartDate);
+
+    // Reset time to midnight for both dates to calculate days correctly
+    const nowMidnight = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate()
+    );
+    const startMidnight = new Date(
+      startDate.getFullYear(),
+      startDate.getMonth(),
+      startDate.getDate()
+    );
+
+    // Calculate difference in days
+    const diffTime = nowMidnight.getTime() - startMidnight.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    // Plan is typically 3 days, so cycle through days 1-3
+    // Day 0 = day 1, day 1 = day 2, day 2 = day 3, day 3+ = day 3 (or could restart)
+    const planDay = Math.min(Math.max(diffDays + 1, 1), 3);
+
+    // Check if this day exists in meals, if not, use day 1
+    const dayExists = meals.some((m) => m.day === planDay);
+    return dayExists ? planDay : 1;
+  };
+
   // Helper function to determine which meal should be marked based on current time
   const getMealToMark = (): {
     day: number;
@@ -159,8 +193,7 @@ const App = () => {
     const now = new Date();
     const currentHour = now.getHours();
 
-    // For MVP, use day 1 of the plan (can be improved to track plan start date)
-    const planDay = 1;
+    const planDay = getCurrentPlanDay();
 
     // Determine meal type based on time of day
     let mealType: "Breakfast" | "Lunch" | "Dinner" | "Snack";
@@ -348,8 +381,9 @@ const App = () => {
       // Always save to eaten meals (even if already completed, with new timestamp)
       saveMealToEaten(mealToUpdate);
     } else if (meals.length > 0) {
-      // If no specific meal found but we have meals, use the first meal from day 1
-      const firstMeal = meals.find((m) => m.day === 1);
+      // If no specific meal found but we have meals, use the first meal from current day
+      const currentDay = getCurrentPlanDay();
+      const firstMeal = meals.find((m) => m.day === currentDay);
       if (firstMeal) {
         saveMealToEaten(firstMeal);
       }
@@ -363,6 +397,9 @@ const App = () => {
       const data = await generateMealPlan(profile);
       setMeals(data.meals);
       setShoppingList(data.shoppingList);
+      // Save plan start date when creating a new plan
+      const updatedProfile = { ...profile, planStartDate: Date.now() };
+      setProfile(updatedProfile);
       setView(ViewState.MEALS);
     } catch (e) {
       console.error("Failed generation", e);
@@ -396,7 +433,11 @@ const App = () => {
         }
       } else {
         // Multiple exclusions or complex case - regenerate full plan
-        const updatedProfile = { ...profile, excludedIngredients: exclusions };
+        const updatedProfile = {
+          ...profile,
+          excludedIngredients: exclusions,
+          planStartDate: Date.now(), // Reset plan start date when regenerating full plan
+        };
         setProfile(updatedProfile);
         const data = await generateMealPlan(updatedProfile);
         setMeals(data.meals);
@@ -541,6 +582,7 @@ const App = () => {
   }
 
   const currentLang = profile.language || "ru";
+  const currentPlanDay = getCurrentPlanDay();
 
   return (
     <div className="bg-slate-50 min-h-screen font-sans text-slate-900">
@@ -553,6 +595,7 @@ const App = () => {
             hasPlan={meals.length > 0}
             isLoadingPlan={isLoadingPlan}
             meals={meals}
+            currentPlanDay={currentPlanDay}
             onOffPlanMealSaved={async (meal) => {
               setOffPlanMeals((prev) => [...prev, meal]);
               // Also save to eaten meals with BJU analysis

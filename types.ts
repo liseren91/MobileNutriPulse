@@ -18,6 +18,7 @@ export interface UserProfile {
   breakfastHour: number;
   excludedIngredients?: string; // New field for dislikes
   language: "ru" | "en"; // New language field
+  planStartDate?: number; // Timestamp when the current meal plan was created
 }
 
 export interface Ingredient {

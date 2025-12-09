@@ -25,6 +25,7 @@ interface DashboardProps {
   hasPlan: boolean;
   isLoadingPlan: boolean;
   meals: Meal[];
+  currentPlanDay: number;
   onOffPlanMealSaved?: (meal: import("../types").OffPlanMealEntry) => void;
 }
 
@@ -35,6 +36,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   hasPlan,
   isLoadingPlan,
   meals,
+  currentPlanDay,
   onOffPlanMealSaved,
 }) => {
   const [timeLeft, setTimeLeft] = useState<string>("00:00:00");
@@ -219,8 +221,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
   // Check for end of day review
   useEffect(() => {
     if (!hasPlan || meals.length === 0) return;
+    // Don't check if review is already showing
+    if (showDayEndReview) return;
 
     const checkDayEnd = () => {
+      // Don't check if review is already showing
+      if (showDayEndReview) return;
+
       const now = new Date();
       const currentHour = now.getHours();
       const today = now.toDateString();
@@ -232,9 +239,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
       // Check if we've already shown review for today
       if (shouldShowReview && dayEndReviewShownRef.current !== today) {
-        // Determine which day to review (for now, day 1)
-        // In future, can be improved to track actual plan start date
-        const dayToReview = 1;
+        // Use current plan day for review
+        const dayToReview = currentPlanDay;
         const dayMeals = meals.filter((m) => m.day === dayToReview);
 
         if (dayMeals.length > 0) {
@@ -248,7 +254,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     checkDayEnd();
     const interval = setInterval(checkDayEnd, 60 * 60 * 1000); // Check every hour
     return () => clearInterval(interval);
-  }, [hasPlan, meals, SLEEP_START_HOUR]);
+  }, [hasPlan, meals, SLEEP_START_HOUR, showDayEndReview]);
 
   const requestAccess = async () => {
     if (Capacitor.isNativePlatform()) {
@@ -484,6 +490,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         {showOffPlanMeal && (
           <OffPlanMeal
             profile={profile}
+            currentPlanDay={currentPlanDay}
             onClose={() => setShowOffPlanMeal(false)}
             onMealAnalyzed={updateLastMeal}
             onMealSaved={onOffPlanMealSaved}
@@ -493,21 +500,23 @@ export const Dashboard: React.FC<DashboardProps> = ({
         {showQuickMealFeedback && (
           <QuickMealFeedback
             profile={profile}
+            currentPlanDay={currentPlanDay}
             onClose={() => setShowQuickMealFeedback(false)}
             onMealAnalyzed={updateLastMeal}
             onMealSaved={onOffPlanMealSaved}
           />
         )}
-
-        {showDayEndReview && (
-          <DayEndReview
-            profile={profile}
-            meals={meals}
-            day={reviewDay}
-            onClose={() => setShowDayEndReview(false)}
-          />
-        )}
       </div>
+
+      {/* DayEndReview rendered outside scrollable container to prevent overlapping */}
+      {showDayEndReview && (
+        <DayEndReview
+          profile={profile}
+          meals={meals}
+          day={reviewDay}
+          onClose={() => setShowDayEndReview(false)}
+        />
+      )}
     </div>
   );
 };
