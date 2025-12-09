@@ -53,8 +53,25 @@ const App = () => {
     if (savedMeals) setMeals(JSON.parse(savedMeals));
     if (savedShop) setShoppingList(JSON.parse(savedShop));
     if (savedOffPlan) setOffPlanMeals(JSON.parse(savedOffPlan));
-    if (savedEatenMeals) setEatenMeals(JSON.parse(savedEatenMeals));
-    if (savedHistory) setDailyHistory(JSON.parse(savedHistory));
+    if (savedEatenMeals) {
+      const parsedEatenMeals = JSON.parse(savedEatenMeals);
+      setEatenMeals(parsedEatenMeals);
+      // Don't load savedHistory - let it be recalculated from eatenMeals
+      // This ensures data consistency and prevents duplicates
+    } else if (savedHistory) {
+      // Only load history if there are no eatenMeals to recalculate from
+      const parsedHistory = JSON.parse(savedHistory);
+      // Remove duplicates by date (keep only the last entry for each date)
+      const historyMap = new Map<string, DailyHistoryEntry>();
+      parsedHistory.forEach((entry: DailyHistoryEntry) => {
+        historyMap.set(entry.date, entry);
+      });
+      setDailyHistory(
+        Array.from(historyMap.values()).sort(
+          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+        )
+      );
+    }
   }, []);
 
   // Save profile updates
@@ -85,13 +102,13 @@ const App = () => {
   }, [dailyHistory]);
 
   // Update daily history when eatenMeals change
+  // Always recalculate completely from eatenMeals to avoid duplicates and incorrect totals
   useEffect(() => {
-    if (eatenMeals.length === 0) return;
-
-    // Group meals by date
+    // Group meals by date (using local time to match user's timezone)
     const mealsByDate = new Map<string, EatenMealEntry[]>();
     eatenMeals.forEach((meal) => {
       const date = new Date(meal.timestamp);
+      // Use local date to match how dates are displayed in Insights
       const dateStr = `${date.getFullYear()}-${String(
         date.getMonth() + 1
       ).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -101,10 +118,12 @@ const App = () => {
       mealsByDate.get(dateStr)!.push(meal);
     });
 
-    // Calculate daily totals
+    // Calculate daily totals - completely recalculate from all eatenMeals
     const newHistory: DailyHistoryEntry[] = [];
     mealsByDate.forEach((meals, date) => {
+      // Sum all calories for this date
       const calories = meals.reduce((sum, m) => sum + (m.calories || 0), 0);
+      // Sum all macronutrients for this date
       const protein = meals.reduce(
         (sum, m) => sum + (m.macronutrients?.protein || 0),
         0
@@ -124,26 +143,15 @@ const App = () => {
         protein,
         carbs,
         fat,
-        meals,
+        meals, // Store all meals for this date
       });
     });
 
-    // Merge with existing history (keep old entries if they don't have new data)
-    setDailyHistory((prevHistory) => {
-      const historyMap = new Map<string, DailyHistoryEntry>();
-      // Add existing entries
-      prevHistory.forEach((entry) => {
-        historyMap.set(entry.date, entry);
-      });
-      // Update or add new entries
-      newHistory.forEach((entry) => {
-        historyMap.set(entry.date, entry);
-      });
-      // Convert back to array and sort by date
-      return Array.from(historyMap.values()).sort(
-        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-      );
-    });
+    // Sort by date and set as new history (completely replace, don't merge)
+    const sortedHistory = newHistory.sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+    setDailyHistory(sortedHistory);
   }, [eatenMeals]);
 
   const handleOnboardingComplete = (newProfile: UserProfile) => {
@@ -730,6 +738,7 @@ const App = () => {
             isLoadingPlan={isLoadingPlan}
             meals={meals}
             currentPlanDay={currentPlanDay}
+            dailyHistory={dailyHistory}
             onProfileClick={() => setView(ViewState.PROFILE)}
             onOffPlanMealSaved={async (meal) => {
               setOffPlanMeals((prev) => [...prev, meal]);

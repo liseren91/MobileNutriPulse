@@ -18,21 +18,23 @@ export const Insights: React.FC<InsightsProps> = ({
 }) => {
   const text = t[language].insights;
 
-  // Get today's date in YYYY-MM-DD format
+  // Get today's date in YYYY-MM-DD format (using local time to match user's timezone)
   const getTodayDate = () => {
     const today = new Date();
+    // Use local date, not UTC, to match how dates are displayed to the user
     return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(
       2,
       "0"
     )}-${String(today.getDate()).padStart(2, "0")}`;
   };
 
-  // Get last 7 days
+  // Get last 7 days (using local time to match user's timezone)
   const getLast7Days = () => {
     const days: string[] = [];
     for (let i = 6; i >= 0; i--) {
       const date = new Date();
       date.setDate(date.getDate() - i);
+      // Use local date, not UTC, to match how dates are displayed to the user
       days.push(
         `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
           2,
@@ -72,35 +74,70 @@ export const Insights: React.FC<InsightsProps> = ({
   }, [history]);
 
   // Get today's data
+  // If there are multiple entries for today (shouldn't happen, but protect against it),
+  // sum them up
   const todayData = useMemo(() => {
     const today = getTodayDate();
-    return (
-      history.find((h) => h.date === today) || {
+    const todayEntries = history.filter((h) => h.date === today);
+
+    if (todayEntries.length === 0) {
+      return {
         date: today,
         calories: 0,
         protein: 0,
         carbs: 0,
         fat: 0,
         meals: [],
-      }
-    );
+      };
+    }
+
+    // If multiple entries exist for today, sum them (shouldn't happen, but protect)
+    if (todayEntries.length > 1) {
+      return {
+        date: today,
+        calories: todayEntries.reduce((sum, e) => sum + e.calories, 0),
+        protein: todayEntries.reduce((sum, e) => sum + e.protein, 0),
+        carbs: todayEntries.reduce((sum, e) => sum + e.carbs, 0),
+        fat: todayEntries.reduce((sum, e) => sum + e.fat, 0),
+        meals: todayEntries.flatMap((e) => e.meals),
+      };
+    }
+
+    return todayEntries[0];
   }, [history]);
 
   // Get weekly data
+  // If there are multiple entries for a date (shouldn't happen, but protect against it),
+  // sum them up
   const weeklyData = useMemo(() => {
     const last7Days = getLast7Days();
     return last7Days.map((date) => {
-      const entry = history.find((h) => h.date === date);
-      return (
-        entry || {
+      const entries = history.filter((h) => h.date === date);
+
+      if (entries.length === 0) {
+        return {
           date,
           calories: 0,
           protein: 0,
           carbs: 0,
           fat: 0,
           meals: [],
-        }
-      );
+        };
+      }
+
+      // If multiple entries exist for this date, sum them (shouldn't happen, but protect)
+      if (entries.length > 1) {
+        return {
+          date,
+          calories: entries.reduce((sum, e) => sum + e.calories, 0),
+          protein: entries.reduce((sum, e) => sum + e.protein, 0),
+          carbs: entries.reduce((sum, e) => sum + e.carbs, 0),
+          fat: entries.reduce((sum, e) => sum + e.fat, 0),
+          meals: entries.flatMap((e) => e.meals),
+        };
+      }
+
+      return entries[0];
     });
   }, [history]);
 
@@ -363,8 +400,10 @@ export const Insights: React.FC<InsightsProps> = ({
               </div>
               <div className="grid grid-cols-2 gap-3">
                 {goalData.map((goal) => {
-                  const remaining = Math.max(goal.target - goal.value, 0);
-                  const progress = goal.value / goal.target;
+                  const remaining =
+                    goal.target > 0 ? Math.max(goal.target - goal.value, 0) : 0;
+                  const progress =
+                    goal.target > 0 ? Math.min(goal.value / goal.target, 1) : 0;
                   return (
                     <div
                       key={goal.key}
@@ -376,7 +415,13 @@ export const Insights: React.FC<InsightsProps> = ({
                           {goal.label}
                         </p>
                         <p className="text-sm text-slate-500">
-                          {Math.round(remaining)} {text.left}
+                          {goal.target > 0 ? (
+                            <>
+                              {Math.round(remaining)} {text.left}
+                            </>
+                          ) : (
+                            <>{Math.round(goal.value)} / —</>
+                          )}
                         </p>
                       </div>
                     </div>
